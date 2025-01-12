@@ -1,3 +1,4 @@
+import imghdr
 import os
 import openai
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
