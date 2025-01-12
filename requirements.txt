@@ -1,0 +1,2 @@
+python-telegram-bot==20.3
+cohere==3.4.0
