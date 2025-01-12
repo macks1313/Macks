@@ -1,6 +1,6 @@
 import os
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import openai
 
 # Retrieve environment variables
@@ -9,7 +9,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 openai.api_key = OPENAI_API_KEY
 
-def generate_response(prompt: str) -> str:
+async def generate_response(prompt: str) -> str:
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -23,23 +23,22 @@ def generate_response(prompt: str) -> str:
     except Exception as e:
         return f"Oups, quelque chose a cassé : {e}"
 
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Oh génial, encore un humain qui a besoin d'aide. Qu'est-ce que tu veux ?")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("Oh génial, encore un humain qui a besoin d'aide. Qu'est-ce que tu veux ?")
 
-def handle_message(update: Update, context: CallbackContext) -> None:
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_message = update.message.text
-    bot_response = generate_response(user_message)
-    update.message.reply_text(bot_response)
+    bot_response = await generate_response(user_message)
+    await update.message.reply_text(bot_response)
 
 def main() -> None:
-    updater = Updater(TELEGRAM_TOKEN)
-    dispatcher = updater.dispatcher
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    updater.start_polling()
-    updater.idle()
+    print("Bot démarré...")
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
