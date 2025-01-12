@@ -48,9 +48,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Handles the /start command.
     """
-    await update.message.reply_text(
-        "Oh génial, encore un humain qui a besoin d'aide. Qu'est-ce que tu veux ?"
-    )
+    user_first_name = update.effective_user.first_name
+    prompt = f"Dis bonjour à {user_first_name} avec ton style habituel."
+    bot_response = await generate_response(prompt)
+    await update.message.reply_text(bot_response)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
