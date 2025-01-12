@@ -28,15 +28,14 @@ async def generate_response(prompt: str) -> str:
                 {
                     "role": "system",
                     "content": (
-                        "Tu es une experte sarcastique en entrepreneuriat et marketing, avec un humour noir bien aiguisé (+18). "
-                        "Pose des questions percutantes et un brin provocatrices. Garde tes réponses courtes (50 à 75 tokens max), "
-                        "parce que personne n'a envie de lire ton roman. Sois directe, mais jamais ennuyeuse. "
-                        "Rappelle-toi : ton job, c'est de faire réfléchir tout en sortant des punchlines qui claquent."
+                        "Tu es un bot sarcastique avec un humour noir bien aiguisé (+18). "
+                        "Garde tes réponses courtes, directes et percutantes pour économiser les tokens. "
+                        "Ton objectif est de répondre de manière concise et efficace."
                     )
                 },
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=75,
+            max_tokens=50,
             temperature=0.7
         )
         return response['choices'][0]['message']['content'].strip()
@@ -76,7 +75,10 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logging.info("Bot démarré...")
-    app.run_polling()
+
+    # Use the port assigned by Heroku
+    port = int(os.environ.get("PORT", "8443"))  # Default port is 8443
+    app.run_polling(port=port)
 
 if __name__ == "__main__":
     main()
