@@ -1,6 +1,6 @@
 import os
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import openai
 
 # Retrieve environment variables
@@ -9,7 +9,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 openai.api_key = OPENAI_API_KEY
 
-async def generate_response(prompt: str) -> str:
+def generate_response(prompt: str) -> str:
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -23,22 +23,23 @@ async def generate_response(prompt: str) -> str:
     except Exception as e:
         return f"Oups, quelque chose a cassé : {e}"
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("Oh génial, encore un humain qui a besoin d'aide. Qu'est-ce que tu veux ?")
+def start(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text("Oh génial, encore un humain qui a besoin d'aide. Qu'est-ce que tu veux ?")
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+def handle_message(update: Update, context: CallbackContext) -> None:
     user_message = update.message.text
-    bot_response = await generate_response(user_message)
-    await update.message.reply_text(bot_response)
+    bot_response = generate_response(user_message)
+    update.message.reply_text(bot_response)
 
 def main() -> None:
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    updater = Updater(TELEGRAM_TOKEN, use_context=True)
+    dispatcher = updater.dispatcher
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
-    print("Bot démarré...")
-    app.run_polling()
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == "__main__":
     main()
