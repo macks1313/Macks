@@ -1,1 +1,1 @@
-worker: python macks.py
+web: python telegram_bot.py
