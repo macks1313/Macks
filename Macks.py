@@ -1,10 +1,20 @@
-import imghdr
 import os
 import openai
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from flask import Flask, request
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 
 # Memory store for user conversations
 user_conversations = {}
+
+app = Flask(__name__)
+
+# Webhook handler
+@app.route(f"/{os.getenv('TELEGRAM_TOKEN')}", methods=['POST'])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot)
+    dispatcher.process_update(update)
+    return "OK", 200
 
 def start(update, context):
     """Send a welcome message and basic instructions."""
@@ -73,30 +83,26 @@ def handle_message(update, context):
     bot_response = generate_response(user_id, user_message)
     context.bot.send_message(chat_id=update.effective_chat.id, text=bot_response)
 
-def main():
-    """Start the bot."""
-    # Récupérer les tokens depuis les variables d'environnement
+if __name__ == "__main__":
     TOKEN = os.getenv("TELEGRAM_TOKEN")
+    HEROKU_APP_NAME = os.getenv("HEROKU_APP_NAME")
 
-    if not TOKEN:
-        print("Erreur : TELEGRAM_TOKEN non défini.")
-        return
+    if not TOKEN or not HEROKU_APP_NAME:
+        print("Erreur : TELEGRAM_TOKEN ou HEROKU_APP_NAME non défini.")
+        exit(1)
 
-    updater = Updater(token=TOKEN, use_context=True)
-    dispatcher = updater.dispatcher
+    # Initialize bot and dispatcher
+    bot = Bot(token=TOKEN)
+    dispatcher = Dispatcher(bot, None, workers=0, use_context=True)
 
-    # Ajouter des gestionnaires de commandes
+    # Add command handlers
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
     dispatcher.add_handler(CommandHandler("clear", clear_conversation))
-
-    # Ajouter un gestionnaire de messages pour répondre aux messages texte
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
-    # Démarrer le bot
-    updater.start_polling()
-    print("Bot en cours d'exécution...")
-    updater.idle()
+    # Set the webhook
+    bot.setWebhook(f"https://{HEROKU_APP_NAME}.herokuapp.com/{TOKEN}")
 
-if __name__ == "__main__":
-    main()
+    # Run Flask app
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
