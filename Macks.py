@@ -1,108 +1,45 @@
 import os
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import openai
-from flask import Flask, request
-from telegram import Bot, Update
-from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 
-# Memory store for user conversations
-user_conversations = {}
+# Retrieve environment variables
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-app = Flask(__name__)
+openai.api_key = OPENAI_API_KEY
 
-# Webhook handler
-@app.route(f"/{os.getenv('TELEGRAM_TOKEN')}", methods=['POST'])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    dispatcher.process_update(update)
-    return "OK", 200
-
-def start(update, context):
-    """Send a welcome message and basic instructions."""
-    user_first_name = update.message.chat.first_name
-    welcome_message = (
-        f"Bonjour {user_first_name}! Pose-moi tes questions ou partage tes pensées, je suis là pour répondre."
-    )
-    context.bot.send_message(chat_id=update.effective_chat.id, text=welcome_message)
-
-def help_command(update, context):
-    """Provide a list of commands and their descriptions."""
-    help_text = (
-        "Voici quelques commandes que tu peux utiliser:\n"
-        "/start - Lancer le bot\n"
-        "/help - Obtenir de l'aide\n"
-        "/clear - Effacer notre conversation\n"
-        "Pose-moi une question ou dis-moi quelque chose, et je répondrai."
-    )
-    context.bot.send_message(chat_id=update.effective_chat.id, text=help_text)
-
-def clear_conversation(update, context):
-    """Clear the conversation memory for the user."""
-    user_id = update.effective_user.id
-    if user_id in user_conversations:
-        del user_conversations[user_id]
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Notre conversation a été effacée.")
-    else:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Aucune conversation à effacer.")
-
-def generate_response(user_id, user_message):
-    """Generate a response using OpenAI's GPT model."""
+def generate_response(prompt: str) -> str:
     try:
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-        # Retrieve the conversation history for the user
-        conversation_history = user_conversations.get(user_id, [])
-        conversation_history.append({"role": "user", "content": user_message})
-
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Tu es un assistant plein de sarcasme, d'humour noir, et de blagues parfois osées. "
-                        "Tu ne dépasses jamais 50 tokens par réponse et tu t'efforces de poser des questions pour engager la conversation. "
-                        "Même dans ton ton sarcastique, tu cherches à motiver et inspirer subtilement."
-                    )
-                }
-            ] + conversation_history,
-            max_tokens=50  # Limiter les tokens pour des réponses courtes
+                {"role": "system", "content": "You are a highly efficient, sarcastic assistant with dark humor. You are also an expert in entrepreneurship and marketing. You always respond in French, and your responses should be short (under 50 tokens). Include sarcasm, dark humor, or provocative questions."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=50
         )
-
-        # Update the conversation history with the assistant's response
-        assistant_message = response.choices[0].message['content'].strip()
-        conversation_history.append({"role": "assistant", "content": assistant_message})
-        user_conversations[user_id] = conversation_history
-
-        return assistant_message
+        return response['choices'][0]['message']['content'].strip()
     except Exception as e:
-        return f"Oups, une erreur est survenue : {e}"
+        return f"Oups, quelque chose a cassé : {e}"
 
-def handle_message(update, context):
-    """Handle user messages and respond using GPT-3.5."""
-    user_id = update.effective_user.id
+def start(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text("Oh génial, encore un humain qui a besoin d'aide. Qu'est-ce que tu veux ?")
+
+def handle_message(update: Update, context: CallbackContext) -> None:
     user_message = update.message.text
-    bot_response = generate_response(user_id, user_message)
-    context.bot.send_message(chat_id=update.effective_chat.id, text=bot_response)
+    bot_response = generate_response(user_message)
+    update.message.reply_text(bot_response)
 
-if __name__ == "__main__":
-    TOKEN = os.getenv("TELEGRAM_TOKEN")
-    HEROKU_APP_NAME = os.getenv("HEROKU_APP_NAME")
+def main() -> None:
+    updater = Updater(TELEGRAM_TOKEN)
+    dispatcher = updater.dispatcher
 
-    if not TOKEN or not HEROKU_APP_NAME:
-        print("Erreur : TELEGRAM_TOKEN ou HEROKU_APP_NAME non défini.")
-        exit(1)
-
-    # Initialize bot and dispatcher
-    bot = Bot(token=TOKEN)
-    dispatcher = Dispatcher(bot, None, workers=0, use_context=True)
-
-    # Add command handlers
     dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-    dispatcher.add_handler(CommandHandler("clear", clear_conversation))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
-    # Set the webhook
-    bot.setWebhook(f"https://{HEROKU_APP_NAME}.herokuapp.com/{TOKEN}")
+    updater.start_polling()
+    updater.idle()
 
-    # Run Flask app
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+if __name__ == "__main__":
+    main()
