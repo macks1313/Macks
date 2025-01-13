@@ -31,8 +31,8 @@ async def get_crypto_data(symbol: str) -> str:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status != 200:
-                    logger.error(f"API request failed with status {response.status}")
-                    return "❌ Failed to fetch data from LunarCrush."
+                    logger.error(f"API request failed with status {response.status}, reason: {response.reason}")
+                    return f"❌ API request failed with status {response.status}: {response.reason}"
                     
                 data = await response.json()
                 if not data.get("data"):
@@ -47,10 +47,12 @@ async def get_crypto_data(symbol: str) -> str:
                     f"💎 Market Cap: ${asset.get('market_cap', 'N/A'):,.0f}\n"
                     f"📊 Volume 24h: ${asset.get('volume_24h', 'N/A'):,.0f}"
                 )
-                
+    except aiohttp.ClientConnectorError as e:
+        logger.error(f"Connection error: {str(e)}")
+        return "❌ Connection error occurred while fetching data."
     except Exception as e:
-        logger.error(f"Error fetching crypto data: {str(e)}")
-        return "❌ An error occurred while fetching cryptocurrency data."
+        logger.error(f"Unexpected error: {str(e)}")
+        return "❌ An unexpected error occurred while fetching cryptocurrency data."
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command"""
