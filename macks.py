@@ -63,7 +63,7 @@ async def get_crypto_data(symbol: str) -> str:
         return "❌ CoinMarketCap API key is not configured. Cannot fetch cryptocurrency data."
 
 async def get_small_cap_cryptos() -> str:
-    """Fetch all cryptocurrencies with market cap < 100M and > 150 transactions per minute."""
+    """Fetch all cryptocurrencies with market cap < 100M and > 50 transactions per second."""
     if COINMARKETCAP_API:
         try:
             url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
@@ -80,9 +80,9 @@ async def get_small_cap_cryptos() -> str:
 
                     for crypto in data.get("data", []):
                         market_cap = crypto['quote']['USD'].get('market_cap', 0)
-                        transactions_per_minute = crypto['quote']['USD'].get('volume_24h', 0) / (24 * 60)
+                        transactions_per_second = crypto['quote']['USD'].get('volume_24h', 0) / (24 * 60 * 60)
 
-                        if market_cap < 100_000_000 and transactions_per_minute > 250:
+                        if market_cap < 100_000_000 and transactions_per_second > 50:
                             results.append(f"📈 {crypto['name']} ({crypto['symbol']}) - Market Cap: ${market_cap:,.2f}")
 
                     if not results:
@@ -105,7 +105,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🚀 Welcome to the Crypto Bot!\n\n"
         "Available commands:\n"
         "/crypto <symbol> - Get cryptocurrency data (e.g., /crypto BTC)\n"
-        "/smallcap - Get cryptocurrencies with market cap < 100M and > 150 transactions per minute\n"
+        "/smallcap - Get cryptocurrencies with market cap < 100M and > 50 transactions per second\n"
         "/help - Show this help message"
     )
     await update.message.reply_text(welcome_message)
