@@ -78,6 +78,7 @@ async def get_crypto_data(symbol: str) -> str:
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command"""
+    logger.info("Received /start command")
     welcome_message = (
         "🚀 Welcome to the Crypto Bot!\n\n"
         "Available commands:\n"
@@ -88,15 +89,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /help command"""
+    logger.info("Received /help command")
     await cmd_start(update, context)
 
 async def cmd_crypto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /crypto command"""
+    logger.info(f"Received /crypto command with args: {context.args}")
     if not context.args:
         await update.message.reply_text("❌ Please provide a cryptocurrency symbol. Example: /crypto BTC")
         return
 
     symbol = context.args[0].upper()
+    logger.info(f"Fetching data for symbol: {symbol}")
     await update.message.reply_text("🔍 Fetching data...")
     message = await get_crypto_data(symbol)
     await update.message.reply_text(message)
@@ -109,13 +113,16 @@ application.add_handler(CommandHandler("crypto", cmd_crypto))
 # Flask routes
 @app.route("/")
 def index():
+    logger.info("Index route accessed")
     return "Crypto Bot is running!"
 
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 async def webhook():
     """Handle incoming webhook updates from Telegram"""
     try:
-        update = Update.de_json(request.get_json(force=True), application.bot)
+        update_json = request.get_json(force=True)
+        logger.info(f"Received webhook update: {update_json}")
+        update = Update.de_json(update_json, application.bot)
         await application.process_update(update)
         return "OK"
     except Exception as e:
