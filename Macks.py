@@ -23,19 +23,19 @@ user_personalities = {}
 # Predefined personalities
 PERSONALITIES = {
     "sarcastic": (
-        "😉 Sarcastique - Un chatbot incroyablement sarcastique, avec un sens de l'humour noir et une passion pour les blagues osées (+18).",
+        "😏 Sarcastique - Ton meilleur ami pour te balancer des piques mordantes, avec des blagues à double sens qui te feront rougir ou rire nerveusement.",
     ),
     "entrepreneur": (
-        "💼 Entrepreneur - Un expert en entrepreneuriat, prêt à donner des conseils pratiques et stratégiques.",
+        "💼 Entrepreneur - Le coach qui ne dort jamais, prêt à te donner des idées de génie pour conquérir le monde (ou éviter la faillite).",
     ),
     "motivational": (
-        "🌟 Motivant - Toujours prêt à encourager et inspirer avec des réponses puissantes.",
+        "🔥 Motivant - Ton boost quotidien ! Des punchlines inspirantes qui te feront courir un marathon... même si c’est juste pour aller au frigo.",
     ),
     "realist": (
-        "🤓 Réaliste - Froid, pragmatique et direct, avec une vision claire des faits.",
+        "🤨 Réaliste - Brut de décoffrage, il te dit la vérité sans fioritures. Parce que parfois, il faut entendre que tout n’est pas rose.",
     ),
     "mystic": (
-        "🌌 Mystique - Énigmatique et poétique, offrant des réponses empreintes de sagesse.",
+        "🔮 Mystique - Des réponses énigmatiques et profondes, parfaites pour ceux qui cherchent à méditer sur le sens de la vie (ou du café).",
     )
 }
 
@@ -67,7 +67,7 @@ async def generate_response(prompt: str, personality: str) -> str:
                 {"role": "user", "content": prompt}
             ],
             max_tokens=75,
-            temperature=0.7
+            temperature=0.8
         )
         return response['choices'][0]['message']['content'].strip()
     except Exception as e:
@@ -82,10 +82,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [["Sarcastique", "Entrepreneur"], ["Motivant", "Réaliste", "Mystique"], ["Menu"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
     welcome_message = (
-        f"<b>Salut {user_first_name} !</b>\n\n"
-        f"Je suis <b>Macks</b>, ton assistant AI multifacette. Voici mes personnalités disponibles :\n\n"
+        f"✨ <b>Salut {user_first_name} !</b> ✨\n\n"
+        f"Je suis <b>Macks</b>, ton assistant AI avec des personnalités multiples et toujours prêt à t’épater. Voici mes options :\n\n"
         + "\n".join([f"{desc[0]}" for desc in PERSONALITIES.values()]) +
-        f"\n\n<b>Choisis une personnalité avec le clavier ci-dessous et laisse-moi te surprendre !</b>"
+        f"\n\n<b>Choisis une personnalité avec le clavier ci-dessous et découvre ce que je peux faire !</b>"
     )
     await update.message.reply_text(welcome_message, parse_mode="HTML", reply_markup=reply_markup)
 
@@ -96,9 +96,9 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [["Voir les personnalités", "Réinitialiser la personnalité"], ["Retour"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
     menu_message = (
-        "<b>Menu principal :</b>\n"
-        "- <b>Voir les personnalités</b> : Liste les différentes personnalités disponibles.\n"
-        "- <b>Réinitialiser la personnalité</b> : Revenir au mode par défaut.\n"
+        "🎛️ <b>Menu principal :</b>\n\n"
+        "1️⃣ <b>Voir les personnalités</b> : Explore mes différentes facettes pour trouver celle qui te correspond.\n"
+        "2️⃣ <b>Réinitialiser la personnalité</b> : Reviens au mode par défaut.\n"
         "\nChoisis une option avec le clavier ci-dessous."
     )
     await update.message.reply_text(menu_message, parse_mode="HTML", reply_markup=reply_markup)
@@ -109,13 +109,13 @@ async def handle_menu_option(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """
     user_choice = update.message.text
     if user_choice == "Voir les personnalités":
-        await show_menu(update, context)
+        await start(update, context)
     elif user_choice == "Réinitialiser la personnalité":
         await reset(update, context)
     elif user_choice == "Retour":
         await start(update, context)
     else:
-        await update.message.reply_text("Option non reconnue. Utilisez le clavier pour choisir une option valide.")
+        await update.message.reply_text("❌ Option non reconnue. Utilise le clavier pour choisir une option valide.")
 
 async def set_personality(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -126,7 +126,7 @@ async def set_personality(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if selected_personality:
         user_personalities[update.effective_user.id] = selected_personality
-        await update.message.reply_text(f"Personnalité définie sur : {selected_personality_display} ✅")
+        await update.message.reply_text(f"✅ Personnalité définie sur : <b>{selected_personality_display}</b>", parse_mode="HTML")
     elif selected_personality_display == "Menu":
         await show_menu(update, context)
     else:
@@ -140,7 +140,7 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id in user_personalities:
         del user_personalities[update.effective_user.id]
     await update.message.reply_text(
-        "Personnalité réinitialisée. Reviens au mode par défaut (😉 Sarcastique)."
+        "🔄 Personnalité réinitialisée. Tu es de retour au mode par défaut (😏 Sarcastique)."
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -173,4 +173,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    
