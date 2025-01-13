@@ -100,9 +100,8 @@ async def set_personality(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         user_personalities[update.effective_user.id] = selected_personality
         await update.message.reply_text(f"Personnalité définie sur : {selected_personality_display} ✅")
     else:
-        await update.message.reply_text(
-            "Personnalité non reconnue. Choisis parmi le clavier ou utilise les commandes disponibles."
-        )
+        # If not a personality choice, handle as a regular message
+        await handle_message(update, context)
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -137,7 +136,6 @@ def main() -> None:
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("reset", reset))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, set_personality))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logging.info("Bot démarré...")
     app.run_polling()
