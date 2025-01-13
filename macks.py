@@ -2,8 +2,8 @@ import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 
-COINMARKETCAP_API = "YOUR_COINMARKETCAP_API_KEY"
-TELEGRAM_TOKEN = "YOUR_TELEGRAM_TOKEN"
+COINMARKETCAP_API = "COINMARKETCAP_API"
+TELEGRAM_TOKEN = "TELEGRAM_TOKEN"
 
 def get_filtered_cryptos():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
