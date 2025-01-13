@@ -46,12 +46,14 @@ async def get_crypto_data(symbol: str) -> str:
 
                     asset = data["data"][symbol]
                     return (
-                        f"📈 {asset.get('name', 'N/A')} ({symbol})\n"
-                        f"💰 Price: ${asset['quote']['USD']['price']:,.2f}\n"
-                        f"📊 24h Change: {asset['quote']['USD']['percent_change_24h']:+.2f}%\n"
-                        f"📈 7d Change: {asset['quote']['USD']['percent_change_7d']:+.2f}%\n"
-                        f"💎 Market Cap: ${asset['quote']['USD']['market_cap']:,.0f}\n"
-                        f"📊 Volume 24h: ${asset['quote']['USD']['volume_24h']:,.0f}"
+                        f"📊 **Cryptocurrency Details** 📊\n"
+                        f"📈 **Name**: {asset.get('name', 'N/A')} ({symbol})\n"
+                        f"💰 **Price**: ${asset['quote']['USD']['price']:,.2f}\n"
+                        f"📉 **24h Change**: {asset['quote']['USD']['percent_change_24h']:+.2f}%\n"
+                        f"📈 **7d Change**: {asset['quote']['USD']['percent_change_7d']:+.2f}%\n"
+                        f"💎 **Market Cap**: ${asset['quote']['USD']['market_cap']:,.0f}\n"
+                        f"🔄 **Volume (24h)**: ${asset['quote']['USD']['volume_24h']:,.0f}\n"
+                        f"⏰ **Last Updated**: {asset['last_updated']}"
                     )
         except aiohttp.ClientConnectorError as e:
             logger.error(f"Connection error with CoinMarketCap: {str(e)}")
@@ -83,12 +85,18 @@ async def get_small_cap_cryptos() -> str:
                         transactions_per_second = crypto['quote']['USD'].get('volume_24h', 0) / (24 * 60 * 60)
 
                         if market_cap < 100_000_000 and transactions_per_second > 50:
-                            results.append(f"📈 {crypto['name']} ({crypto['symbol']}) - Market Cap: ${market_cap:,.2f}")
+                            results.append(
+                                f"📈 **Name**: {crypto['name']} ({crypto['symbol']})\n"
+                                f"💰 **Price**: ${crypto['quote']['USD']['price']:,.2f}\n"
+                                f"💎 **Market Cap**: ${market_cap:,.2f}\n"
+                                f"🔄 **Transactions/s**: {transactions_per_second:.2f}\n"
+                                f"⏰ **Last Updated**: {crypto['last_updated']}\n"
+                            )
 
                     if not results:
                         return "❌ No cryptocurrencies found matching the criteria."
 
-                    return "\n".join(results)
+                    return "\n---\n".join(results)
         except aiohttp.ClientConnectorError as e:
             logger.error(f"Connection error with CoinMarketCap: {str(e)}")
             return "❌ Connection error occurred while fetching data from CoinMarketCap."
@@ -102,13 +110,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command"""
     logger.info("Received /start command")
     welcome_message = (
-        "🚀 Welcome to the Crypto Bot!\n\n"
-        "Available commands:\n"
+        "🚀 **Welcome to the Crypto Bot!**\n\n"
+        "🌟 **Available commands:**\n"
         "/crypto <symbol> - Get cryptocurrency data (e.g., /crypto BTC)\n"
         "/smallcap - Get cryptocurrencies with market cap < 100M and > 50 transactions per second\n"
         "/help - Show this help message"
     )
-    await update.message.reply_text(welcome_message)
+    await update.message.reply_text(welcome_message, parse_mode="Markdown")
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /help command"""
@@ -126,14 +134,14 @@ async def cmd_crypto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     logger.info(f"Fetching data for symbol: {symbol}")
     await update.message.reply_text("🔍 Fetching data...")
     message = await get_crypto_data(symbol)
-    await update.message.reply_text(message)
+    await update.message.reply_text(message, parse_mode="Markdown")
 
 async def cmd_smallcap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /smallcap command"""
     logger.info("Received /smallcap command")
     await update.message.reply_text("🔍 Fetching small cap cryptocurrencies...")
     message = await get_small_cap_cryptos()
-    await update.message.reply_text(message)
+    await update.message.reply_text(message, parse_mode="Markdown")
 
 # Register command handlers
 application.add_handler(CommandHandler("start", cmd_start))
