@@ -1,9 +1,10 @@
 import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
+import os
 
-COINMARKETCAP_API = "COINMARKETCAP_API"
-TELEGRAM_TOKEN = "TELEGRAM_TOKEN"
+COINMARKETCAP_API = os.getenv("COINMARKETCAP_API")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 def get_filtered_cryptos():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
@@ -12,7 +13,7 @@ def get_filtered_cryptos():
     response = requests.get(url, headers=headers, params=params).json()
     filtered = []
     for crypto in response["data"]:
-        # Ajoute des filtres supplémentaires si nécessaire
+        # Add more filters here (e.g., variation, audits, etc.)
         filtered.append(crypto["name"])
     return filtered
 
