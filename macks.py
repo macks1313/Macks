@@ -36,7 +36,7 @@ try:
     env_vars = check_env_variables()
     TELEGRAM_TOKEN = env_vars['TELEGRAM_TOKEN']
     API_KEY_LUNARCRUSH = env_vars['API_KEY_LUNARCRUSH']
-    WEBHOOK_URL = f"https://<nom-de-votre-application>.herokuapp.com"
+    WEBHOOK_URL = f"https://macks13.herokuapp.com"
     PORT = int(os.getenv('PORT', '8443'))
 except ValueError as e:
     logger.error(f"Configuration error: {e}")
