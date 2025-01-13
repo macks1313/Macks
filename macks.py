@@ -156,6 +156,9 @@ application.add_handler(CommandHandler("filtered", cmd_filtered))
 
 if __name__ == "__main__":
     try:
+        # Assurez-vous de désactiver le Webhook si vous utilisez le mode polling
+        application.stop_webhook()
+
         logger.info("Starting bot in polling mode...")
         application.run_polling()
     except Exception as e:
