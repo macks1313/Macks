@@ -17,24 +17,41 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # Set OpenAI API key
 openai.api_key = OPENAI_API_KEY
 
-async def generate_response(prompt: str) -> str:
+# Dictionary to store user personalities
+user_personalities = {}
+
+# Predefined personalities
+PERSONALITIES = {
+    "sarcastic": (
+        "Tu es un chatbot incroyablement sarcastique, avec un sens de l'humour noir et une passion pour les blagues osées. Tes réponses sont mordantes et pleines d'esprit.",
+    ),
+    "friendly": (
+        "Tu es un chatbot très amical, toujours prêt à encourager et à faire sourire les gens. Tes réponses sont chaleureuses et positives.",
+    ),
+    "intellectual": (
+        "Tu es un chatbot intellectuel, toujours prêt à partager des idées complexes et des réponses réfléchies avec des faits et des détails fascinants.",
+    ),
+    "minimalist": (
+        "Tu es un chatbot minimaliste. Tes réponses sont courtes, directes et précises, sans aucune fioriture inutile.",
+    )
+}
+
+def get_personality(user_id: int) -> str:
+    """
+    Retrieve the personality for a given user. Defaults to "sarcastic".
+    """
+    return user_personalities.get(user_id, "sarcastic")
+
+async def generate_response(prompt: str, personality: str) -> str:
     """
     Generates a response using OpenAI's API.
     """
     try:
+        system_message = PERSONALITIES.get(personality, PERSONALITIES["sarcastic"])[0]
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Tu es un chatbot incroyablement sarcastique, avec un sens de l'humour noir et une passion pour les blagues osées (+18). Ton objectif est de répondre à ton utilisateur de manière hilarante, mordante et parfois provocante, sans jamais te retenir. Tes réponses sont pleines d'esprit, légèrement cyniques, et tu n’hésites pas à faire des remarques décalées ou à tourner les choses en dérision."
-
-"Tu sais comment équilibrer ton ton pour que, malgré ton sarcasme, tes répliques restent drôles et divertissantes, sans être gratuitement insultantes. Tes blagues et tes remarques jouent avec les limites de la bienséance, mais tu restes intelligent, subtil et ingénieux dans ta manière de choquer ou de provoquer."
-
-"Ton mantra est : 'Si ça ne fait pas rougir ou rire nerveusement, c’est que je n’ai pas essayé assez fort.' Adapte toujours ton humour au contexte, mais garde ton style sans filtre. il faut toujours des reponse percutante mais courte dans la mesure du possible pour economiser les token"
-                                )
-                },
+                {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=75,
@@ -51,8 +68,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     user_first_name = update.effective_user.first_name
     prompt = f"Dis bonjour à {user_first_name} avec ton style habituel."
-    bot_response = await generate_response(prompt)
+    personality = get_personality(update.effective_user.id)
+    bot_response = await generate_response(prompt, personality)
     await update.message.reply_text(bot_response)
+
+async def set_personality(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handles the /setpersonality command to change the bot's personality.
+    """
+    if not context.args:
+        await update.message.reply_text(
+            "Merci de spécifier une personnalité. Les options sont : \n" + ", ".join(PERSONALITIES.keys())
+        )
+        return
+
+    selected_personality = context.args[0].lower()
+    if selected_personality in PERSONALITIES:
+        user_personalities[update.effective_user.id] = selected_personality
+        await update.message.reply_text(f"Personnalité définie sur : {selected_personality}")
+    else:
+        await update.message.reply_text(
+            "Personnalité non reconnue. Les options sont : \n" + ", ".join(PERSONALITIES.keys())
+        )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -60,7 +97,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """
     user_message = update.message.text
     logging.info(f"Message reçu : {user_message}")
-    bot_response = await generate_response(user_message)
+    personality = get_personality(update.effective_user.id)
+    bot_response = await generate_response(user_message, personality)
     await update.message.reply_text(bot_response)
 
 def main() -> None:
@@ -74,6 +112,7 @@ def main() -> None:
 
     # Add command and message handlers
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("setpersonality", set_personality))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logging.info("Bot démarré...")
