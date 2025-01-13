@@ -3,6 +3,7 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import openai
 import logging
+from flask import Flask, request
 
 # Configure logging
 logging.basicConfig(
@@ -13,9 +14,13 @@ logging.basicConfig(
 # Retrieve environment variables
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PORT = int(os.environ.get("PORT", 5000))
 
 # Set OpenAI API key
 openai.api_key = OPENAI_API_KEY
+
+# Flask app for webhook
+app = Flask(__name__)
 
 # Dictionary to store user personalities
 user_personalities = {}
@@ -153,23 +158,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     bot_response = await generate_response(user_message, personality)
     await update.message.reply_text(bot_response)
 
-def main() -> None:
+@app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
+def webhook():
     """
-    Main function to start the bot.
+    Flask route to handle webhook updates from Telegram.
     """
-    if not TELEGRAM_TOKEN or not OPENAI_API_KEY:
-        raise ValueError("Veuillez configurer TELEGRAM_TOKEN et OPENAI_API_KEY dans les variables d'environnement.")
-
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-
-    # Add command and message handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("reset", reset))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, set_personality))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_option))
-
-    logging.info("Bot démarré...")
-    app.run_polling()
+    update = Update.de_json(request.get_json(force=True), ApplicationBuilder().token(TELEGRAM_TOKEN).build().bot)
+    context = ContextTypes.DEFAULT_TYPE
+    ApplicationBuilder().process_update(update, context)
+    return "OK", 200
 
 if __name__ == "__main__":
-    main()
+    app.run(host="0.0.0.0", port=PORT)
