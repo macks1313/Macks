@@ -1,1 +1,2 @@
-web: gunicorn -w 1 -b 0.0.0.0:$PORT Macks:app
+worker: python macks.py
+web: python macks.py
