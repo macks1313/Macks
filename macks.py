@@ -28,8 +28,8 @@ if not COINMARKETCAP_API:
 # Initialisation du bot Telegram
 application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-async def get_filtered_cryptos() -> str:
-    """Fetch cryptocurrencies based on detailed filtering criteria."""
+async def get_filtered_cryptos(user_filters: dict) -> str:
+    """Fetch cryptocurrencies based on user-provided filtering criteria."""
     if COINMARKETCAP_API:
         try:
             url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
@@ -50,12 +50,12 @@ async def get_filtered_cryptos() -> str:
                         percent_change_7d = crypto['quote']['USD'].get('percent_change_7d', 0)
                         percent_change_30d = crypto['quote']['USD'].get('percent_change_30d', 0)
 
-                        # Filtering criteria
+                        # Apply user filters
                         if (
-                            1_000_000 <= market_cap <= 100_000_000 and
-                            volume_24h > 500_000 and
-                            -15 <= percent_change_7d <= 15 and
-                            -20 <= percent_change_30d <= 20
+                            user_filters['min_market_cap'] <= market_cap <= user_filters['max_market_cap'] and
+                            volume_24h > user_filters['min_volume'] and
+                            user_filters['min_change_7d'] <= percent_change_7d <= user_filters['max_change_7d'] and
+                            user_filters['min_change_30d'] <= percent_change_30d <= user_filters['max_change_30d']
                         ):
                             results.append(
                                 f"📈 **Name**: {crypto['name']} ({crypto['symbol']})\n"
@@ -70,7 +70,15 @@ async def get_filtered_cryptos() -> str:
                     if not results:
                         return "❌ No cryptocurrencies found matching the criteria."
 
-                    return "\n---\n".join(results)
+                    explanation = (
+                        "**Filtering Criteria Explanation:**\n"
+                        f"1️⃣ **Market Cap**: Between ${user_filters['min_market_cap']:,} and ${user_filters['max_market_cap']:,}.\n"
+                        f"2️⃣ **24h Volume**: Greater than ${user_filters['min_volume']:,}.\n"
+                        f"3️⃣ **7d Change**: Between {user_filters['min_change_7d']}% and {user_filters['max_change_7d']}%.\n"
+                        f"4️⃣ **30d Change**: Between {user_filters['min_change_30d']}% and {user_filters['max_change_30d']}%.\n"
+                    )
+
+                    return explanation + "\n\n**Results:**\n" + "\n---\n".join(results)
         except aiohttp.ClientConnectorError as e:
             logger.error(f"Connection error with CoinMarketCap: {str(e)}")
             return "❌ Connection error occurred while fetching data from CoinMarketCap."
@@ -83,8 +91,31 @@ async def get_filtered_cryptos() -> str:
 async def cmd_filtered(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /filtered command to fetch cryptocurrencies based on criteria."""
     logger.info("Received /filtered command")
-    await update.message.reply_text("🔍 Fetching filtered cryptocurrencies...")
-    message = await get_filtered_cryptos()
+
+    # Default filter values
+    filters = {
+        'min_market_cap': 1_000_000,
+        'max_market_cap': 100_000_000,
+        'min_volume': 500_000,
+        'min_change_7d': -15,
+        'max_change_7d': 15,
+        'min_change_30d': -20,
+        'max_change_30d': 20
+    }
+
+    # Parse user-provided filters
+    if context.args:
+        try:
+            for arg in context.args:
+                key, value = arg.split('=')
+                if key in filters:
+                    filters[key] = float(value) if 'change' in key or 'volume' in key else int(value)
+        except ValueError:
+            await update.message.reply_text("❌ Invalid filter format. Use key=value pairs, e.g., min_market_cap=5000000.")
+            return
+
+    await update.message.reply_text("🔍 Fetching filtered cryptocurrencies with your criteria...")
+    message = await get_filtered_cryptos(filters)
     await update.message.reply_text(message, parse_mode="Markdown")
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -94,7 +125,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🚀 **Welcome to the Crypto Bot!**\n\n"
         "🌟 **Available commands:**\n"
         "/crypto <symbol> - Get cryptocurrency data (e.g., /crypto BTC)\n"
-        "/filtered - Get cryptocurrencies filtered by specific criteria\n"
+        "/filtered [key=value] - Filter cryptocurrencies (e.g., /filtered min_market_cap=5000000 min_volume=1000000)\n"
         "/help - Show this help message"
     )
     await update.message.reply_text(welcome_message, parse_mode="Markdown")
