@@ -1,15 +1,17 @@
-import logging
-
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
 import os
 import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
-from flask import Flask, request
+from flask import Flask
 import asyncio
+import logging
+
+# Configuration des logs
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 # Récupérer les variables d'environnement
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -33,25 +35,33 @@ def get_crypto_data(symbol):
             name = asset.get("name", "N/A")
             price = asset.get("price", "N/A")
             change_24h = asset.get("percent_change_24h", "N/A")
-            return f"📈 {name} ({symbol})\n💰 Price: ${price}\n📊 Change (24h): {change_24h}%"
+            return f"\ud83d\udcc8 {name} ({symbol})\n\ud83d\udcb0 Price: ${price}\n\ud83d\udcca Change (24h): {change_24h}%"
         else:
-            return "❌ No data found for this cryptocurrency."
+            return "\u274c No data found for this cryptocurrency."
     else:
-        return "❌ Failed to fetch data from LunarCrush."
+        return "\u274c Failed to fetch data from LunarCrush."
 
 # Commande /start
 async def start(update: Update, context: CallbackContext) -> None:
+    logger.info("Received /start command")
     await update.message.reply_text("Welcome! Use /crypto <symbol> to get cryptocurrency data.")
 
 # Commande /crypto
 async def crypto(update: Update, context: CallbackContext) -> None:
     if len(context.args) == 0:
-        await update.message.reply_text("❌ Please provide a cryptocurrency symbol. Example: /crypto BTC")
+        logger.info("No symbol provided for /crypto command")
+        await update.message.reply_text("\u274c Please provide a cryptocurrency symbol. Example: /crypto BTC")
         return
 
     symbol = context.args[0].upper()
     message = get_crypto_data(symbol)
+    logger.info(f"Crypto command for symbol: {symbol}")
     await update.message.reply_text(message)
+
+# Commande /echo pour tester
+async def echo(update: Update, context: CallbackContext) -> None:
+    logger.info(f"Received message: {update.message.text}")
+    await update.message.reply_text(f"You said: {update.message.text}")
 
 # Fonction principale pour démarrer le bot
 async def run_bot():
@@ -60,8 +70,10 @@ async def run_bot():
     # Ajouter des commandes
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("crypto", crypto))
+    application.add_handler(CommandHandler("echo", echo))
 
     # Démarrer le bot
+    logger.info("Starting bot polling")
     await application.run_polling()
 
 # Point d'entrée principal
@@ -72,4 +84,5 @@ if __name__ == "__main__":
     loop.create_task(run_bot())
 
     # Démarrer Flask
+    logger.info("Starting Flask server")
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
