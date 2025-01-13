@@ -91,16 +91,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    Displays the menu to the user.
+    Displays a menu with additional options.
     """
-    keyboard = [["Sarcastique", "Entrepreneur"], ["Motivant", "Réaliste", "Mystique"], ["Menu"]]
+    keyboard = [["Voir les personnalités", "Réinitialiser la personnalité"], ["Retour"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
     menu_message = (
-        "<b>Voici le menu :</b>\n"
-        + "\n".join([f"{desc[0]}" for desc in PERSONALITIES.values()]) +
-        "\n\n<b>Choisis une personnalité avec le clavier ci-dessous !</b>"
+        "<b>Menu principal :</b>\n"
+        "- <b>Voir les personnalités</b> : Liste les différentes personnalités disponibles.\n"
+        "- <b>Réinitialiser la personnalité</b> : Revenir au mode par défaut.\n"
+        "\nChoisis une option avec le clavier ci-dessous."
     )
     await update.message.reply_text(menu_message, parse_mode="HTML", reply_markup=reply_markup)
+
+async def handle_menu_option(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handles user choices from the menu.
+    """
+    user_choice = update.message.text
+    if user_choice == "Voir les personnalités":
+        await show_menu(update, context)
+    elif user_choice == "Réinitialiser la personnalité":
+        await reset(update, context)
+    elif user_choice == "Retour":
+        await start(update, context)
+    else:
+        await update.message.reply_text("Option non reconnue. Utilisez le clavier pour choisir une option valide.")
 
 async def set_personality(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -151,9 +166,13 @@ def main() -> None:
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("reset", reset))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, set_personality))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_option))
 
     logging.info("Bot démarré...")
     app.run_polling()
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()
