@@ -1,6 +1,7 @@
 # Partie A : Configuration initiale du bot et gestion des commandes de base (150 lignes)
 
-from telegram import Update, Bot, ParseMode
+from telegram import Update, Bot
+from telegram.constants import ParseMode
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
 # Configuration initiale
