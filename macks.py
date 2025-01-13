@@ -1,7 +1,7 @@
 import os
 import requests
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes, CommandHandler
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # Configurer les logs
 import logging
@@ -80,26 +80,55 @@ def get_filtered_cryptos(criteria):
 
     return filtered_cryptos
 
-# Commande pour mettre à jour les critères
-async def update_criteria_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global FILTER_CRITERIA
+# Fonction pour afficher les critères actuels
+async def display_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("Market Cap Max", callback_data="set_market_cap_max")],
+        [InlineKeyboardButton("Volume 24h Min", callback_data="set_volume_24h_min")],
+        [InlineKeyboardButton("Variation 24h Min", callback_data="set_percent_change_24h_min")],
+        [InlineKeyboardButton("Jours Depuis Lancement Max", callback_data="set_days_since_launch_max")],
+        [InlineKeyboardButton("Circulating Supply Min", callback_data="set_circulating_supply_min")],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        f"Critères actuels :\n"
+        f"- Market Cap Max : {FILTER_CRITERIA['market_cap_max']}\n"
+        f"- Volume 24h Min : {FILTER_CRITERIA['volume_24h_min']}\n"
+        f"- Variation 24h Min : {FILTER_CRITERIA['percent_change_24h_min']}%\n"
+        f"- Jours Depuis Lancement Max : {FILTER_CRITERIA['days_since_launch_max']}\n"
+        f"- Circulating Supply Min : {FILTER_CRITERIA['circulating_supply_min']}\n\n"
+        "Cliquez sur un critère pour le modifier.",
+        reply_markup=reply_markup
+    )
+
+# Fonction pour modifier un critère
+async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    criteria_key = query.data.replace("set_", "")
+    context.user_data["current_criteria"] = criteria_key
+
+    await query.edit_message_text(
+        text=f"Entrez une nouvelle valeur pour {criteria_key.replace('_', ' ').title()} :"
+    )
+
+# Fonction pour enregistrer une nouvelle valeur
+async def save_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        args = context.args
-        if len(args) % 2 != 0:
-            await update.message.reply_text("Veuillez fournir des paires clé-valeur pour mettre à jour les critères.")
-            return
+        new_value = float(update.message.text)
+        criteria_key = context.user_data.get("current_criteria")
 
-        for i in range(0, len(args), 2):
-            key = args[i]
-            value = float(args[i + 1])
-            if key in FILTER_CRITERIA:
-                FILTER_CRITERIA[key] = value
-
-        await update.message.reply_text(
-            f"Critères mis à jour : {FILTER_CRITERIA}"
-        )
-    except Exception as e:
-        await update.message.reply_text(f"Erreur lors de la mise à jour des critères : {e}")
+        if criteria_key and criteria_key in FILTER_CRITERIA:
+            FILTER_CRITERIA[criteria_key] = new_value
+            await update.message.reply_text(
+                f"Le critère '{criteria_key.replace('_', ' ').title()}' a été mis à jour avec succès à {new_value}."
+            )
+        else:
+            await update.message.reply_text("Aucun critère en cours de modification.")
+    except ValueError:
+        await update.message.reply_text("Veuillez entrer une valeur numérique valide.")
 
 # Commande /cryptos
 async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -129,14 +158,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Bienvenue sur le bot Crypto !\n\n"
         "Utilisez /cryptos pour voir les cryptos filtrées.\n"
-        "Utilisez /update_criteria suivi de paires clé-valeur pour modifier les critères de filtrage.\n"
-        "Exemple : /update_criteria market_cap_max 500000000 volume_24h_min 200000\n\n"
-        "Filtres par défaut :\n"
-        "- Market cap max : 1B$\n"
-        "- Volume quotidien min : 100k$\n"
-        "- Variation 24h min : -5%\n"
-        "- Jours depuis lancement max : 730\n"
-        "- Circulating supply min : 1"
+        "Utilisez /set_criteria pour ajuster vos critères de filtrage facilement."
     )
 
 # Commande /help
