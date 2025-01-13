@@ -2,10 +2,9 @@ import os
 import sys
 import requests
 import aiohttp
-import socket
+import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
-import logging
 
 # Configuration des logs
 logging.basicConfig(
@@ -25,8 +24,13 @@ if not TELEGRAM_TOKEN:
 if not COINMARKETCAP_API:
     logger.warning("COINMARKETCAP_API is not set. The bot cannot fetch cryptocurrency data.")
 
-# Initialisation du bot Telegram
-application = Application.builder().token(TELEGRAM_TOKEN).build()
+# Échappement des caractères spéciaux pour MarkdownV2
+def escape_markdown_v2(text):
+    """Échappe les caractères spéciaux pour le mode MarkdownV2."""
+    special_characters = r"()[]{}\-_.!*#+?`|~>"
+    for char in special_characters:
+        text = text.replace(char, f"\\{char}")
+    return text
 
 async def get_filtered_cryptos(user_filters: dict) -> str:
     """Fetch cryptocurrencies based on user-provided filtering criteria."""
@@ -58,12 +62,12 @@ async def get_filtered_cryptos(user_filters: dict) -> str:
                             user_filters['min_change_30d'] <= percent_change_30d <= user_filters['max_change_30d']
                         ):
                             results.append(
-                                f"📈 **Name**: {crypto['name']} \({crypto['symbol']}\)\n"
+                                f"📈 **Name**: {escape_markdown_v2(crypto['name'])} ({crypto['symbol']})\n"
                                 f"💰 **Price**: \${crypto['quote']['USD']['price']:,.2f}\n"
                                 f"💎 **Market Cap**: \${market_cap:,.2f}\n"
                                 f"🔄 **24h Volume**: \${volume_24h:,.2f}\n"
-                                f"📉 **7d Change**: {percent_change_7d:+.2f}\%\n"
-                                f"📈 **30d Change**: {percent_change_30d:+.2f}\%\n"
+                                f"📉 **7d Change**: {percent_change_7d:+.2f}%\n"
+                                f"📈 **30d Change**: {percent_change_30d:+.2f}%\n"
                                 f"⏰ **Last Updated**: {crypto['last_updated']}\n"
                             )
 
@@ -74,8 +78,8 @@ async def get_filtered_cryptos(user_filters: dict) -> str:
                         "**Filtering Criteria Explanation:**\n"
                         f"1️⃣ **Market Cap**: Between \${user_filters['min_market_cap']:,} and \${user_filters['max_market_cap']:,}.\n"
                         f"2️⃣ **24h Volume**: Greater than \${user_filters['min_volume']:,}.\n"
-                        f"3️⃣ **7d Change**: Between {user_filters['min_change_7d']}\% and {user_filters['max_change_7d']}\%.\n"
-                        f"4️⃣ **30d Change**: Between {user_filters['min_change_30d']}\% and {user_filters['max_change_30d']}\%.\n"
+                        f"3️⃣ **7d Change**: Between {user_filters['min_change_7d']}% and {user_filters['max_change_7d']}%.\n"
+                        f"4️⃣ **30d Change**: Between {user_filters['min_change_30d']}% and {user_filters['max_change_30d']}%.\n"
                     )
 
                     return explanation + "\n\n**Results:**\n" + "\n---\n".join(results)
@@ -87,6 +91,8 @@ async def get_filtered_cryptos(user_filters: dict) -> str:
             return "❌ An unexpected error occurred while fetching data from CoinMarketCap."
     else:
         return "❌ CoinMarketCap API key is not configured. Cannot fetch cryptocurrency data."
+# Initialisation du bot Telegram
+application = Application.builder().token(TELEGRAM_TOKEN).build()
 
 async def cmd_filtered(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /filtered command to fetch cryptocurrencies based on criteria."""
@@ -122,13 +128,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command"""
     logger.info("Received /start command")
     welcome_message = (
-        "🚀 Welcome to the Crypto Bot\!\n\n"
+        "🚀 Welcome to the Crypto Bot!\n\n"
         "🌟 Available commands:\n"
-        "/crypto \<symbol\> \- Get cryptocurrency data \(e\.g\., /crypto BTC\)\n"
-        "/filtered \[key\=value\] \- Filter cryptocurrencies \(e\.g\., /filtered min_market_cap\=5000000 min_volume\=1000000\)\n"
-        "/help \- Show this help message"
+        "/crypto <symbol> - Get cryptocurrency data (e.g., /crypto BTC)\n"
+        "/filtered [key=value] - Filter cryptocurrencies (e.g., /filtered min_market_cap=5000000 min_volume=1000000)\n"
+        "/help - Show this help message"
     )
-    await update.message.reply_text(welcome_message, parse_mode="MarkdownV2")
+    await update.message.reply_text(escape_markdown_v2(welcome_message), parse_mode="MarkdownV2")
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /help command"""
