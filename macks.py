@@ -78,29 +78,36 @@ async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"📉 *Variation 30j* : {crypto['percent_change_30d']:.2f}%\n\n"
             )
     else:
-        message = "❌ Aucune crypto ne correspond à vos critères."
+        message = "❌ *Aucune crypto ne correspond à vos critères.*"
 
     await context.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
 
 # Commande /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Bienvenue sur le bot Crypto !\n\n"
-        "Utilisez /cryptos pour voir les cryptos filtrées.\n"
-        "Filtres appliqués :\n"
-        "- Market cap entre 1M$ et 100M$\n"
-        "- Volume quotidien supérieur à 500k$\n"
-        "- Variation 7j entre -10% et +10%\n"
-        "- Variation 30j entre -20% et +20%"
+        "👋 *Bienvenue sur le bot Crypto !*\n\n"
+        "✨ *Fonctionnalités disponibles :*\n"
+        "👉 Utilisez /cryptos pour voir les cryptos filtrées.\n\n"
+        "⚙️ *Filtres appliqués :*\n"
+        "- 📏 *Market cap* : Entre 1M$ et 100M$\n"
+        "- 💹 *Volume quotidien* : Supérieur à 500k$\n"
+        "- 📉 *Variation 7 jours* : Entre -10% et +10%\n"
+        "- 📉 *Variation 30 jours* : Entre -20% et +20%\n\n"
+        "🛠️ *Commandes disponibles :*\n"
+        "- /start : Démarrer le bot\n"
+        "- /cryptos : Afficher les cryptos filtrées\n"
+        "- /help : Obtenir de l'aide"
     )
 
 # Commande /help
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Voici les commandes disponibles :\n"
-        "/start - Démarrer le bot\n"
-        "/cryptos - Afficher les cryptos filtrées\n"
-        "/help - Obtenir de l'aide"
+        "ℹ️ *Aide du bot Crypto :*\n\n"
+        "📚 *Commandes disponibles :*\n"
+        "- /start : Démarrer le bot\n"
+        "- /cryptos : Afficher les cryptos filtrées\n"
+        "- /help : Obtenir de l'aide\n\n"
+        "🚀 Profitez de votre expérience crypto avec ce bot !"
     )
 
 # Initialisation du bot
