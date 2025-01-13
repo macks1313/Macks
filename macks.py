@@ -82,7 +82,7 @@ async def get_small_cap_cryptos() -> str:
                         market_cap = crypto['quote']['USD'].get('market_cap', 0)
                         transactions_per_minute = crypto['quote']['USD'].get('volume_24h', 0) / (24 * 60)
 
-                        if market_cap < 100_000_000 and transactions_per_minute > 150:
+                        if market_cap < 100_000_000 and transactions_per_minute > 250:
                             results.append(f"📈 {crypto['name']} ({crypto['symbol']}) - Market Cap: ${market_cap:,.2f}")
 
                     if not results:
