@@ -2,7 +2,7 @@ import os
 import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
-from flask import Flask
+from flask import Flask, request
 import asyncio
 import logging
 
@@ -24,6 +24,12 @@ app = Flask(__name__)
 def index():
     return "Bot is running!"
 
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    data = request.get_json()
+    logger.info(f"Webhook received data: {data}")
+    return "OK"
+
 # Fonction pour interagir avec LunarCrush API
 def get_crypto_data(symbol):
     url = f"https://api.lunarcrush.com/v2?data=assets&key={API_KEY_LUNARCRUSH}&symbol={symbol}"
@@ -35,7 +41,7 @@ def get_crypto_data(symbol):
             name = asset.get("name", "N/A")
             price = asset.get("price", "N/A")
             change_24h = asset.get("percent_change_24h", "N/A")
-            return f"\ud83d\udcc8 {name} ({symbol})\n\ud83d\udcb0 Price: ${price}\n\ud83d\udcca Change (24h): {change_24h}%"
+            return f"📈 {name} ({symbol})\n💰 Price: ${price}\n📊 Change (24h): {change_24h}%"
         else:
             return "\u274c No data found for this cryptocurrency."
     else:
@@ -86,4 +92,3 @@ if __name__ == "__main__":
     # Démarrer Flask
     logger.info("Starting Flask server")
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
-
