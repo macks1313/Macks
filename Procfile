@@ -1,1 +1,1 @@
-web: python Macks.py
+web: gunicorn -w 4 -b 0.0.0.0:$PORT Macks:app
