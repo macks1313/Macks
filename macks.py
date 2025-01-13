@@ -2,6 +2,7 @@ import os
 import sys
 import requests
 import aiohttp
+import asyncio
 import socket
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
@@ -154,7 +155,7 @@ application.add_handler(CommandHandler("help", cmd_help))
 application.add_handler(CommandHandler("crypto", cmd_crypto))
 application.add_handler(CommandHandler("filtered", cmd_filtered))
 
-if __name__ == "__main__":
+async def main():
     try:
         # Assurez-vous de désactiver le Webhook si vous utilisez le mode polling
         await application.bot.delete_webhook()
@@ -164,3 +165,6 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Failed to start polling: {e}")
         sys.exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())
