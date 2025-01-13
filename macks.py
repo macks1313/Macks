@@ -2,6 +2,7 @@ import os
 import sys
 import requests
 import aiohttp
+import socket
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 import logging
@@ -21,6 +22,13 @@ if not TELEGRAM_TOKEN or not API_KEY_LUNARCRUSH:
     logger.error("Missing TELEGRAM_TOKEN or API_KEY_LUNARCRUSH in environment variables.")
     sys.exit(1)
 
+# Résolution DNS pour l'API LunarCrush
+try:
+    host_ip = socket.gethostbyname('api.lunarcrush.com')
+    logger.info(f"LunarCrush resolved IP: {host_ip}")
+except Exception as e:
+    logger.error(f"Failed to resolve LunarCrush: {str(e)}")
+
 # Initialisation du bot Telegram
 application = Application.builder().token(TELEGRAM_TOKEN).build()
 
@@ -28,7 +36,7 @@ async def get_crypto_data(symbol: str) -> str:
     """Fetch cryptocurrency data from LunarCrush API"""
     try:
         url = f"https://api.lunarcrush.com/v2?data=assets&key={API_KEY_LUNARCRUSH}&symbol={symbol}"
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.get(url) as response:
                 if response.status != 200:
                     logger.error(f"API request failed with status {response.status}, reason: {response.reason}")
@@ -95,3 +103,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Failed to start polling: {e}")
         sys.exit(1)
+
