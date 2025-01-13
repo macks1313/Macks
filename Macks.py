@@ -71,15 +71,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     user_first_name = update.effective_user.first_name
     personality_descriptions = "\n".join([
-        f"\u2022 /setpersonality {key} - {desc[0][:50]}..." for key, desc in PERSONALITIES.items()
+        f"\u2022 <b>/{key}</b>: {desc[0][:50]}..." for key, desc in PERSONALITIES.items()
     ])
     welcome_message = (
-        f"Salut {user_first_name} !\n\n"
-        f"Je suis ton assistant multifacette. Voici ce que je peux faire pour toi :\n"
+        f"<b>Salut {user_first_name} !</b>\n\n"
+        f"Je suis <b>Macks</b>, ton assistant AI avec plusieurs personnalités pour répondre à toutes tes envies. Voici mes modes :\n"
         f"{personality_descriptions}\n\n"
-        f"Essaye une personnalité avec la commande appropriée et commençons !"
+        f"<i>Pour commencer, choisis une personnalité avec une commande. Je suis prêt à te surprendre !</i>"
     )
-    await update.message.reply_text(welcome_message)
+    await update.message.reply_text(welcome_message, parse_mode="HTML")
 
 async def set_personality(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
