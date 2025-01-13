@@ -155,10 +155,10 @@ application.add_handler(CommandHandler("help", cmd_help))
 application.add_handler(CommandHandler("crypto", cmd_crypto))
 application.add_handler(CommandHandler("filtered", cmd_filtered))
 
-async def main():
+def main():
     try:
-        # Assurez-vous de désactiver le Webhook si vous utilisez le mode polling
-        await application.bot.delete_webhook()
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(application.bot.delete_webhook())
 
         logger.info("Starting bot in polling mode...")
         application.run_polling()
@@ -167,4 +167,5 @@ async def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
+
