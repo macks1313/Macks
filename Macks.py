@@ -70,13 +70,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     Handles the /start command.
     """
     user_first_name = update.effective_user.first_name
-    personality_descriptions = "\n".join([f"- {key}: {desc[0][:75]}..." for key, desc in PERSONALITIES.items()])
-    prompt = (
-        f"Dis bonjour à {user_first_name} avec ton style habituel et explique les personnalités disponibles :\n{personality_descriptions}"
+    personality_descriptions = "\n".join([
+        f"\u2022 /setpersonality {key} - {desc[0][:50]}..." for key, desc in PERSONALITIES.items()
+    ])
+    welcome_message = (
+        f"Salut {user_first_name} !\n\n"
+        f"Je suis ton assistant multifacette. Voici ce que je peux faire pour toi :\n"
+        f"{personality_descriptions}\n\n"
+        f"Essaye une personnalité avec la commande appropriée et commençons !"
     )
-    personality = get_personality(update.effective_user.id)
-    bot_response = await generate_response(prompt, personality)
-    await update.message.reply_text(bot_response)
+    await update.message.reply_text(welcome_message)
 
 async def set_personality(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
