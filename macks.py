@@ -56,7 +56,7 @@ def get_filtered_cryptos():
                 5 <= percent_change_24h <= 30 and
                 10 <= percent_change_7d <= 100 and
                 volume_to_market_cap > 10 and
-                (days_since_launch is not None and days_since_launch < 30) and
+                (days_since_launch is not None and days_since_launch < 300) and
                 circulating_supply < 1e8
             ):
                 filtered_cryptos.append({
@@ -107,7 +107,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "- Variation 24h entre 5% et 30%\n"
         "- Variation 7j entre 10% et 100%\n"
         "- Ratio Volume/Market Cap > 10%\n"
-        "- Lancement récent (< 30 jours)\n"
+        "- Lancement récent (< 300 jours)\n"
         "- Offre en circulation < 100M tokens"
     )
 
@@ -131,11 +131,6 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
 
     # Lancer le bot en mode polling
-    application.run_polling()
-
-if __name__ == "__main__":
-    main()
-
     application.run_polling()
 
 if __name__ == "__main__":
