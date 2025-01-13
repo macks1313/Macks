@@ -1,39 +1,89 @@
+import os
 import requests
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext
-import os
+from telegram.ext import Updater, CommandHandler, CallbackContext
 
-COINMARKETCAP_API = os.getenv("COINMARKETCAP_API")
+# Récupérer les tokens depuis Heroku
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+COINMARKETCAP_API = os.getenv("COINMARKETCAP_API")
 
+# URL de l'API CoinMarketCap
+CMC_URL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
+
+# Fonction pour filtrer les cryptos
 def get_filtered_cryptos():
-    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
     headers = {"X-CMC_PRO_API_KEY": COINMARKETCAP_API}
-    params = {"market_cap_max": 100000000, "market_cap_min": 1000000, "volume_24h_min": 500000}
-    response = requests.get(url, headers=headers, params=params).json()
-    filtered = []
-    for crypto in response["data"]:
-        # Add more filters here (e.g., variation, audits, etc.)
-        filtered.append(crypto["name"])
-    return filtered
+    params = {
+        "start": "1",  # Commence par la première crypto
+        "limit": "500",  # Analyse les 500 premières cryptos
+        "convert": "USD"  # Convertir les prix en USD
+    }
 
-async def start(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text("Bienvenue sur le bot Crypto ! Tapez /lowcap pour voir les cryptos à petite capitalisation.")
+    response = requests.get(CMC_URL, headers=headers, params=params)
+    data = response.json()
 
-async def lowcap(update: Update, context: CallbackContext) -> None:
-    cryptos = get_filtered_cryptos()
-    if cryptos:
-        await update.message.reply_text("Voici les cryptos filtrées :\n" + "\n".join(cryptos))
+    # Liste des cryptos filtrées
+    filtered_cryptos = []
+
+    if response.status_code == 200 and "data" in data:
+        for crypto in data["data"]:
+            # Extraire les données nécessaires
+            market_cap = crypto["quote"]["USD"]["market_cap"]
+            volume_24h = crypto["quote"]["USD"]["volume_24h"]
+            percent_change_7d = crypto["quote"]["USD"]["percent_change_7d"]
+            percent_change_30d = crypto["quote"]["USD"].get("percent_change_30d", 0)
+
+            # Appliquer les filtres
+            if (
+                1e6 <= market_cap <= 1e8 and  # Capitalisation entre 1M$ et 100M$
+                volume_24h > 500_000 and  # Volume quotidien > 500k$
+                -10 <= percent_change_7d <= 10 and  # Variation modérée sur 7 jours
+                -20 <= percent_change_30d <= 20  # Variation modérée sur 30 jours
+            ):
+                filtered_cryptos.append({
+                    "name": crypto["name"],
+                    "symbol": crypto["symbol"],
+                    "price": crypto["quote"]["USD"]["price"],
+                    "market_cap": market_cap,
+                    "volume_24h": volume_24h,
+                    "percent_change_7d": percent_change_7d,
+                    "percent_change_30d": percent_change_30d
+                })
+
+    return filtered_cryptos
+
+# Fonction pour gérer la commande /cryptos
+def crypto_handler(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    filtered_cryptos = get_filtered_cryptos()
+
+    if filtered_cryptos:
+        message = "📊 *Cryptos Filtrées :*\n\n"
+        for crypto in filtered_cryptos[:10]:  # Limite à 10 cryptos
+            message += (
+                f"🔸 *Nom* : {crypto['name']} ({crypto['symbol']})\n"
+                f"💰 *Prix* : ${crypto['price']:.2f}\n"
+                f"📈 *Market Cap* : ${crypto['market_cap']:.0f}\n"
+                f"📊 *Volume (24h)* : ${crypto['volume_24h']:.0f}\n"
+                f"📉 *Variation 7j* : {crypto['percent_change_7d']:.2f}%\n"
+                f"📉 *Variation 30j* : {crypto['percent_change_30d']:.2f}%\n\n"
+            )
     else:
-        await update.message.reply_text("Aucune crypto ne correspond aux critères pour le moment.")
+        message = "❌ Aucune crypto ne correspond à vos critères."
 
+    context.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
+
+# Initialiser le bot Telegram
 def main():
-    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    updater = Updater(token=TELEGRAM_TOKEN)
+    dispatcher = updater.dispatcher
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("lowcap", lowcap))
+    # Ajouter les commandes
+    dispatcher.add_handler(CommandHandler("cryptos", crypto_handler))
 
-    application.run_polling()
+    # Démarrer le bot
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == "__main__":
     main()
