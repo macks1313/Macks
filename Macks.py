@@ -39,6 +39,15 @@ PERSONALITIES = {
     )
 }
 
+# Mapping between display names and internal keys
+DISPLAY_TO_KEY = {
+    "Sarcastique": "sarcastic",
+    "Entrepreneur": "entrepreneur",
+    "Motivant": "motivational",
+    "Réaliste": "realist",
+    "Mystique": "mystic"
+}
+
 def get_personality(user_id: int) -> str:
     """
     Retrieve the personality for a given user. Defaults to "sarcastic".
@@ -82,15 +91,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def set_personality(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    Handles the /setpersonality command to change the bot's personality.
+    Handles the personality selection based on keyboard input.
     """
-    selected_personality = update.message.text.lower()
-    if selected_personality in PERSONALITIES:
+    selected_personality_display = update.message.text
+    selected_personality = DISPLAY_TO_KEY.get(selected_personality_display)
+
+    if selected_personality:
         user_personalities[update.effective_user.id] = selected_personality
-        await update.message.reply_text(f"Personnalité définie sur : {selected_personality.capitalize()} ✅")
+        await update.message.reply_text(f"Personnalité définie sur : {selected_personality_display} ✅")
     else:
         await update.message.reply_text(
-            "Personnalité non reconnue. Choisis parmi : " + ", ".join(PERSONALITIES.keys())
+            "Personnalité non reconnue. Choisis parmi le clavier ou utilise les commandes disponibles."
         )
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
