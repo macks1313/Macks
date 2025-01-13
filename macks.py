@@ -16,57 +16,51 @@ logger = logging.getLogger(__name__)
 
 # Vérification des variables d'environnement
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-API_KEY_LUNARCRUSH = os.getenv('API_KEY_LUNARCRUSH')
+COINMARKETCAP_API = os.getenv('COINMARKETCAP_API')
 
 if not TELEGRAM_TOKEN:
     logger.error("Missing TELEGRAM_TOKEN in environment variables.")
     sys.exit(1)
 
-if not API_KEY_LUNARCRUSH:
-    logger.warning("API_KEY_LUNARCRUSH is not set. The bot cannot fetch cryptocurrency data.")
-
-# Résolution DNS pour l'API LunarCrush
-try:
-    host_ip = socket.gethostbyname('api.lunarcrush.com')
-    logger.info(f"LunarCrush resolved IP: {host_ip}")
-except Exception as e:
-    logger.error(f"Failed to resolve LunarCrush: {str(e)}")
+if not COINMARKETCAP_API:
+    logger.warning("COINMARKETCAP_API is not set. The bot cannot fetch cryptocurrency data.")
 
 # Initialisation du bot Telegram
 application = Application.builder().token(TELEGRAM_TOKEN).build()
 
 async def get_crypto_data(symbol: str) -> str:
-    """Fetch cryptocurrency data from LunarCrush API."""
-    if API_KEY_LUNARCRUSH:
+    """Fetch cryptocurrency data from CoinMarketCap API."""
+    if COINMARKETCAP_API:
         try:
-            url = f"https://api.lunarcrush.com/v2?data=assets&key={API_KEY_LUNARCRUSH}&symbol={symbol}"
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-                async with session.get(url) as response:
+            url = f"https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol={symbol}"
+            headers = {"X-CMC_PRO_API_KEY": COINMARKETCAP_API}
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
                     if response.status != 200:
-                        logger.error(f"LunarCrush API request failed with status {response.status}, reason: {response.reason}")
-                        return f"❌ LunarCrush API request failed with status {response.status}: {response.reason}"
+                        logger.error(f"CoinMarketCap API request failed with status {response.status}, reason: {response.reason}")
+                        return f"❌ CoinMarketCap API request failed with status {response.status}: {response.reason}"
                     
                     data = await response.json()
-                    if not data.get("data"):
-                        return "❌ No data found for this cryptocurrency on LunarCrush."
+                    if not data.get("data") or symbol not in data["data"]:
+                        return "❌ No data found for this cryptocurrency on CoinMarketCap."
 
-                    asset = data["data"][0]
+                    asset = data["data"][symbol]
                     return (
                         f"📈 {asset.get('name', 'N/A')} ({symbol})\n"
-                        f"💰 Price: ${asset.get('price', 'N/A'):,.2f}\n"
-                        f"📊 24h Change: {asset.get('percent_change_24h', 'N/A'):+.2f}%\n"
-                        f"📈 7d Change: {asset.get('percent_change_7d', 'N/A'):+.2f}%\n"
-                        f"💎 Market Cap: ${asset.get('market_cap', 'N/A'):,.0f}\n"
-                        f"📊 Volume 24h: ${asset.get('volume_24h', 'N/A'):,.0f}"
+                        f"💰 Price: ${asset['quote']['USD']['price']:,.2f}\n"
+                        f"📊 24h Change: {asset['quote']['USD']['percent_change_24h']:+.2f}%\n"
+                        f"📈 7d Change: {asset['quote']['USD']['percent_change_7d']:+.2f}%\n"
+                        f"💎 Market Cap: ${asset['quote']['USD']['market_cap']:,.0f}\n"
+                        f"📊 Volume 24h: ${asset['quote']['USD']['volume_24h']:,.0f}"
                     )
         except aiohttp.ClientConnectorError as e:
-            logger.error(f"Connection error with LunarCrush: {str(e)}")
-            return "❌ Connection error occurred while fetching data from LunarCrush."
+            logger.error(f"Connection error with CoinMarketCap: {str(e)}")
+            return "❌ Connection error occurred while fetching data from CoinMarketCap."
         except Exception as e:
-            logger.error(f"Unexpected error with LunarCrush: {str(e)}")
-            return "❌ An unexpected error occurred while fetching data from LunarCrush."
+            logger.error(f"Unexpected error with CoinMarketCap: {str(e)}")
+            return "❌ An unexpected error occurred while fetching data from CoinMarketCap."
     else:
-        return "❌ LunarCrush API key is not configured. Cannot fetch cryptocurrency data."
+        return "❌ CoinMarketCap API key is not configured. Cannot fetch cryptocurrency data."
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command"""
