@@ -2,8 +2,8 @@ import os
 import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
-from flask import Flask
-import threading
+from flask import Flask, request
+import asyncio
 
 # Récupérer les variables d'environnement
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -34,21 +34,21 @@ def get_crypto_data(symbol):
         return "❌ Failed to fetch data from LunarCrush."
 
 # Commande /start
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Welcome! Use /crypto <symbol> to get cryptocurrency data.")
+async def start(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text("Welcome! Use /crypto <symbol> to get cryptocurrency data.")
 
 # Commande /crypto
-def crypto(update: Update, context: CallbackContext) -> None:
+async def crypto(update: Update, context: CallbackContext) -> None:
     if len(context.args) == 0:
-        update.message.reply_text("❌ Please provide a cryptocurrency symbol. Example: /crypto BTC")
+        await update.message.reply_text("❌ Please provide a cryptocurrency symbol. Example: /crypto BTC")
         return
 
     symbol = context.args[0].upper()
     message = get_crypto_data(symbol)
-    update.message.reply_text(message)
+    await update.message.reply_text(message)
 
-# Lancer le bot Telegram
-def run_bot():
+# Fonction principale pour démarrer le bot
+async def run_bot():
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
     # Ajouter des commandes
@@ -56,9 +56,14 @@ def run_bot():
     application.add_handler(CommandHandler("crypto", crypto))
 
     # Démarrer le bot
-    application.run_polling()
+    await application.run_polling()
 
 # Point d'entrée principal
 if __name__ == "__main__":
-    threading.Thread(target=run_bot).start()
+    loop = asyncio.get_event_loop()
+
+    # Démarrer le bot dans un thread asyncio
+    loop.create_task(run_bot())
+
+    # Démarrer Flask
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
