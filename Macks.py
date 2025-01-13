@@ -75,9 +75,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ])
     welcome_message = (
         f"<b>Salut {user_first_name} !</b>\n\n"
-        f"Je suis <b>Macks</b>, ton assistant AI avec plusieurs personnalités pour répondre à toutes tes envies. Voici mes modes :\n"
+        f"Je suis <b>Macks</b>, ton assistant AI multifacette. Avec moi, tu ne t'ennuieras jamais !\n"
+        f"<i>Voici mes personnalités disponibles :</i>\n"
         f"{personality_descriptions}\n\n"
-        f"<i>Pour commencer, choisis une personnalité avec une commande. Je suis prêt à te surprendre !</i>"
+        f"<b>Prêt pour l'aventure ?</b> Choisis une personnalité en utilisant une commande ci-dessus, et laisse-moi te montrer ce que je sais faire.\n"
+        f"<i>(Conseil : commence avec /sarcastic si tu veux vraiment t'amuser !)</i>"
     )
     await update.message.reply_text(welcome_message, parse_mode="HTML")
 
