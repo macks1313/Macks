@@ -20,7 +20,6 @@ def check_env_variables():
     required_vars = {
         'TELEGRAM_TOKEN': os.getenv('TELEGRAM_TOKEN'),
         'API_KEY_LUNARCRUSH': os.getenv('API_KEY_LUNARCRUSH'),
-        'WEBHOOK_URL': os.getenv('WEBHOOK_URL')
     }
     
     missing_vars = [var for var, value in required_vars.items() if not value]
@@ -37,7 +36,7 @@ try:
     env_vars = check_env_variables()
     TELEGRAM_TOKEN = env_vars['TELEGRAM_TOKEN']
     API_KEY_LUNARCRUSH = env_vars['API_KEY_LUNARCRUSH']
-    WEBHOOK_URL = env_vars['WEBHOOK_URL']
+    WEBHOOK_URL = f"https://<nom-de-votre-application>.herokuapp.com"
     PORT = int(os.getenv('PORT', '8443'))
 except ValueError as e:
     logger.error(f"Configuration error: {e}")
