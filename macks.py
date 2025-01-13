@@ -116,17 +116,17 @@ async def cmd_filtered(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     await update.message.reply_text("🔍 Fetching filtered cryptocurrencies with your criteria...")
     message = await get_filtered_cryptos(filters)
-    await update.message.reply_text(message, parse_mode="Markdown")
+    await update.message.reply_text(message, parse_mode="MarkdownV2")
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command"""
     logger.info("Received /start command")
     welcome_message = (
-        "🚀 *Welcome to the Crypto Bot!*\n\n"
-        "🌟 *Available commands:*\n"
-        "/crypto <symbol> - Get cryptocurrency data (e.g., /crypto BTC)\n"
-        "/filtered [key=value] - Filter cryptocurrencies (e.g., /filtered min_market_cap=5000000 min_volume=1000000)\n"
-        "/help - Show this help message"
+        "🚀 Welcome to the Crypto Bot\!\n\n"
+        "🌟 Available commands:\n"
+        "/crypto <symbol> \- Get cryptocurrency data \(e\.g\., /crypto BTC\)\n"
+        "/filtered \[key=value\] \- Filter cryptocurrencies \(e\.g\., /filtered min_market_cap=5000000 min_volume=1000000\)\n"
+        "/help \- Show this help message"
     )
     await update.message.reply_text(welcome_message, parse_mode="MarkdownV2")
 
