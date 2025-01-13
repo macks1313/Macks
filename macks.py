@@ -42,7 +42,6 @@ def get_filtered_cryptos(criteria):
         return []
 
     data = response.json()
-
     filtered_cryptos = []
 
     if "data" in data:
@@ -101,7 +100,6 @@ async def display_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Cliquez sur un critère pour le modifier.",
         reply_markup=reply_markup
     )
-
 # Fonction pour modifier un critère
 async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -136,20 +134,20 @@ async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     filtered_cryptos = get_filtered_cryptos(FILTER_CRITERIA)
 
     if filtered_cryptos:
-        message = "\ud83d\udcca *Cryptos Filtrées :*\n\n"
+        message = "📊 *Cryptos Filtrées :*\n\n"
         for crypto in filtered_cryptos[:10]:
             message += (
-                f"\ud83d\udd38 *Nom* : {crypto['name']} ({crypto['symbol']})\n"
-                f"\ud83d\udcb0 *Prix* : ${crypto['price']:.2f}\n"
-                f"\ud83d\udcc8 *Market Cap* : ${crypto['market_cap']:.0f}\n"
-                f"\ud83d\udcca *Volume (24h)* : ${crypto['volume_24h']:.0f}\n"
-                f"\ud83d\udd3b *Variation 24h* : {crypto['percent_change_24h']:.2f}%\n"
-                f"\ud83d\udd3b *Variation 7j* : {crypto['percent_change_7d']:.2f}%\n"
-                f"\ud83d\udcc9 *Ratio Volume/Market Cap* : {crypto['volume_to_market_cap']:.2f}%\n"
-                f"\ud83d\udd12 *Offre en circulation* : {crypto['circulating_supply']:.0f} tokens\n\n"
+                f"🔸 *Nom* : {crypto['name']} ({crypto['symbol']})\n"
+                f"💰 *Prix* : ${crypto['price']:.2f}\n"
+                f"📈 *Market Cap* : ${crypto['market_cap']:.0f}\n"
+                f"📊 *Volume (24h)* : ${crypto['volume_24h']:.0f}\n"
+                f"📉 *Variation 24h* : {crypto['percent_change_24h']:.2f}%\n"
+                f"📉 *Variation 7j* : {crypto['percent_change_7d']:.2f}%\n"
+                f"📊 *Ratio Volume/Market Cap* : {crypto['volume_to_market_cap']:.2f}%\n"
+                f"🔒 *Offre en circulation* : {crypto['circulating_supply']:.0f} tokens\n\n"
             )
     else:
-        message = "\u274c Aucune crypto ne correspond à vos critères pour l'instant. Continuez à chercher des pépites !"
+        message = "❌ Aucune crypto ne correspond à vos critères pour l'instant. Continuez à chercher des pépites !"
 
     await context.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
 
@@ -167,7 +165,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Voici les commandes disponibles :\n"
         "/start - Démarrer le bot\n"
         "/cryptos - Afficher les cryptos filtrées\n"
-        "/update_criteria - Mettre à jour les critères de filtrage\n"
+        "/set_criteria - Ajuster les critères de filtrage\n"
         "/help - Obtenir de l'aide"
     )
 
@@ -179,8 +177,10 @@ def main():
     # Ajouter les commandes
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("cryptos", crypto_handler))
-    application.add_handler(CommandHandler("update_criteria", update_criteria_handler))
+    application.add_handler(CallbackQueryHandler(set_criteria))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("set_criteria", display_criteria))
+    application.add_handler(CommandHandler("save_criteria", save_criteria))
 
     # Lancer le bot en mode polling
     application.run_polling()
