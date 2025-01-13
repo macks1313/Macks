@@ -4,9 +4,7 @@ import requests
 import aiohttp
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
-from flask import Flask, request, jsonify
 import logging
-from typing import Optional
 
 # Configuration des logs
 logging.basicConfig(
@@ -15,35 +13,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def check_env_variables():
-    """Vérifie que toutes les variables d'environnement requises sont présentes"""
-    required_vars = {
-        'TELEGRAM_TOKEN': os.getenv('TELEGRAM_TOKEN'),
-        'API_KEY_LUNARCRUSH': os.getenv('API_KEY_LUNARCRUSH'),
-    }
-    
-    missing_vars = [var for var, value in required_vars.items() if not value]
-    
-    if missing_vars:
-        error_msg = f"Missing required environment variables: {', '.join(missing_vars)}"
-        logger.error(error_msg)
-        raise ValueError(error_msg)
-    
-    return required_vars
+# Vérification des variables d'environnement
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+API_KEY_LUNARCRUSH = os.getenv('API_KEY_LUNARCRUSH')
 
-# Vérification des variables d'environnement au démarrage
-try:
-    env_vars = check_env_variables()
-    TELEGRAM_TOKEN = env_vars['TELEGRAM_TOKEN']
-    API_KEY_LUNARCRUSH = env_vars['API_KEY_LUNARCRUSH']
-    WEBHOOK_URL = f"https://macks13.herokuapp.com"
-    PORT = int(os.getenv('PORT', '8443'))
-except ValueError as e:
-    logger.error(f"Configuration error: {e}")
+if not TELEGRAM_TOKEN or not API_KEY_LUNARCRUSH:
+    logger.error("Missing TELEGRAM_TOKEN or API_KEY_LUNARCRUSH in environment variables.")
     sys.exit(1)
-
-# Initialisation Flask
-app = Flask(__name__)
 
 # Initialisation du bot Telegram
 application = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -110,45 +86,10 @@ application.add_handler(CommandHandler("start", cmd_start))
 application.add_handler(CommandHandler("help", cmd_help))
 application.add_handler(CommandHandler("crypto", cmd_crypto))
 
-# Flask routes
-@app.route("/")
-def index():
-    logger.info("Index route accessed")
-    return "Crypto Bot is running!"
-
-@app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
-async def webhook():
-    """Handle incoming webhook updates from Telegram"""
-    try:
-        update_json = request.get_json(force=True)
-        logger.info(f"Received webhook update: {update_json}")
-        update = Update.de_json(update_json, application.bot)
-        await application.process_update(update)
-        return "OK"
-    except Exception as e:
-        logger.error(f"Error processing update: {str(e)}")
-        return str(e), 500
-
-async def setup_webhook():
-    """Setup webhook for Telegram bot"""
-    try:
-        webhook_url = f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}"
-        logger.info(f"Setting webhook to: {webhook_url}")
-        await application.bot.set_webhook(url=webhook_url)
-        logger.info("Webhook setup complete")
-    except Exception as e:
-        logger.error(f"Failed to set webhook: {e}")
-        raise
-
 if __name__ == "__main__":
-    # Setup webhook
-    import asyncio
     try:
-        asyncio.run(setup_webhook())
-        
-        # Start Flask server
-        logger.info(f"Starting Flask server on port {PORT}")
-        app.run(host="0.0.0.0", port=PORT)
+        logger.info("Starting bot in polling mode...")
+        application.run_polling()
     except Exception as e:
-        logger.error(f"Failed to start application: {e}")
+        logger.error(f"Failed to start polling: {e}")
         sys.exit(1)
