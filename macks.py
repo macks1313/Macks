@@ -28,11 +28,6 @@ if not COINMARKETCAP_API:
 # Initialisation du bot Telegram
 application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-def escape_markdown(text):
-    """Escape special characters for MarkdownV2."""
-    escape_chars = r"_[]()~>#+-=|{}.!"
-    return ''.join(f'\\{char}' if char in escape_chars else char for char in text)
-
 async def get_filtered_cryptos(user_filters: dict) -> str:
     """Fetch cryptocurrencies based on user-provided filtering criteria."""
     if COINMARKETCAP_API:
@@ -63,13 +58,13 @@ async def get_filtered_cryptos(user_filters: dict) -> str:
                             user_filters['min_change_30d'] <= percent_change_30d <= user_filters['max_change_30d']
                         ):
                             results.append(
-                                f"📈 **Name**: {escape_markdown(crypto['name'])} \({escape_markdown(crypto['symbol'])}\)\n"
+                                f"📈 **Name**: {crypto['name']} \({crypto['symbol']}\)\n"
                                 f"💰 **Price**: \${crypto['quote']['USD']['price']:,.2f}\n"
                                 f"💎 **Market Cap**: \${market_cap:,.2f}\n"
                                 f"🔄 **24h Volume**: \${volume_24h:,.2f}\n"
                                 f"📉 **7d Change**: {percent_change_7d:+.2f}\%\n"
                                 f"📈 **30d Change**: {percent_change_30d:+.2f}\%\n"
-                                f"⏰ **Last Updated**: {escape_markdown(crypto['last_updated'])}\n"
+                                f"⏰ **Last Updated**: {crypto['last_updated']}\n"
                             )
 
                     if not results:
@@ -161,4 +156,8 @@ application.add_handler(CommandHandler("filtered", cmd_filtered))
 
 if __name__ == "__main__":
     try:
-       
+        logger.info("Starting bot in polling mode...")
+        application.run_polling()
+    except Exception as e:
+        logger.error(f"Failed to start polling: {e}")
+        sys.exit(1)
