@@ -1,4 +1,5 @@
 import os
+import sys
 import requests
 import aiohttp
 from telegram import Update
@@ -14,17 +15,36 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def check_env_variables():
+    """Vérifie que toutes les variables d'environnement requises sont présentes"""
+    required_vars = {
+        'TELEGRAM_TOKEN': os.getenv('TELEGRAM_TOKEN'),
+        'API_KEY_LUNARCRUSH': os.getenv('API_KEY_LUNARCRUSH'),
+        'WEBHOOK_URL': os.getenv('WEBHOOK_URL')
+    }
+    
+    missing_vars = [var for var, value in required_vars.items() if not value]
+    
+    if missing_vars:
+        error_msg = f"Missing required environment variables: {', '.join(missing_vars)}"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
+    return required_vars
+
+# Vérification des variables d'environnement au démarrage
+try:
+    env_vars = check_env_variables()
+    TELEGRAM_TOKEN = env_vars['TELEGRAM_TOKEN']
+    API_KEY_LUNARCRUSH = env_vars['API_KEY_LUNARCRUSH']
+    WEBHOOK_URL = env_vars['WEBHOOK_URL']
+    PORT = int(os.getenv('PORT', '8443'))
+except ValueError as e:
+    logger.error(f"Configuration error: {e}")
+    sys.exit(1)
+
 # Initialisation Flask
 app = Flask(__name__)
-
-# Configuration
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-API_KEY_LUNARCRUSH = os.getenv("API_KEY_LUNARCRUSH")
-PORT = int(os.getenv('PORT', '8443'))
-WEBHOOK_URL = os.getenv('WEBHOOK_URL')
-
-if not all([TELEGRAM_TOKEN, API_KEY_LUNARCRUSH, WEBHOOK_URL]):
-    raise ValueError("Missing required environment variables")
 
 # Initialisation du bot Telegram
 application = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -105,16 +125,24 @@ async def webhook():
 
 async def setup_webhook():
     """Setup webhook for Telegram bot"""
-    webhook_url = f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}"
-    logger.info(f"Setting webhook to: {webhook_url}")
-    await application.bot.set_webhook(url=webhook_url)
-    logger.info("Webhook setup complete")
+    try:
+        webhook_url = f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}"
+        logger.info(f"Setting webhook to: {webhook_url}")
+        await application.bot.set_webhook(url=webhook_url)
+        logger.info("Webhook setup complete")
+    except Exception as e:
+        logger.error(f"Failed to set webhook: {e}")
+        raise
 
 if __name__ == "__main__":
     # Setup webhook
     import asyncio
-    asyncio.run(setup_webhook())
-    
-    # Start Flask server
-    logger.info(f"Starting Flask server on port {PORT}")
-    app.run(host="0.0.0.0", port=PORT)
+    try:
+        asyncio.run(setup_webhook())
+        
+        # Start Flask server
+        logger.info(f"Starting Flask server on port {PORT}")
+        app.run(host="0.0.0.0", port=PORT)
+    except Exception as e:
+        logger.error(f"Failed to start application: {e}")
+        sys.exit(1)
