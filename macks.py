@@ -1,3 +1,9 @@
+import logging
+
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 import os
 import requests
 from telegram import Update
