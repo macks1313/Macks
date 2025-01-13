@@ -7,6 +7,7 @@ import socket
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 import logging
+import time
 
 # Configuration des logs
 logging.basicConfig(
@@ -160,6 +161,9 @@ def main():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(application.bot.delete_webhook())
 
+        # Ajout d'un délai pour garantir la suppression du Webhook
+        time.sleep(1)
+
         logger.info("Starting bot in polling mode...")
         application.run_polling()
     except Exception as e:
@@ -168,4 +172,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
