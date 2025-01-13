@@ -1,7 +1,7 @@
 import os
 import requests
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, ContextTypes, CommandHandler
 
 # Configurer les logs
 import logging
@@ -18,8 +18,17 @@ COINMARKETCAP_API = os.getenv("COINMARKETCAP_API")
 # URL de l'API CoinMarketCap
 CMC_URL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
 
+# Définir des critères par défaut
+FILTER_CRITERIA = {
+    "market_cap_max": 1e9,
+    "volume_24h_min": 100_000,
+    "percent_change_24h_min": -5,
+    "days_since_launch_max": 730,
+    "circulating_supply_min": 1
+}
+
 # Fonction pour filtrer les cryptos
-def get_filtered_cryptos():
+def get_filtered_cryptos(criteria):
     headers = {"X-CMC_PRO_API_KEY": COINMARKETCAP_API}
     params = {
         "start": "1",
@@ -51,13 +60,11 @@ def get_filtered_cryptos():
             days_since_launch = (datetime.utcnow() - datetime.fromisoformat(date_added.replace("Z", ""))).days if date_added else None
 
             if (
-                0 <= market_cap <= 1e8 and
-                volume_24h > 500_000 and
-                5 <= percent_change_24h <= 30 and
-                10 <= percent_change_7d <= 100 and
-                volume_to_market_cap > 10 and
-                (days_since_launch is not None and days_since_launch < 300) and
-                circulating_supply < 1e8
+                market_cap <= criteria.get("market_cap_max", 1e9) and
+                volume_24h >= criteria.get("volume_24h_min", 100_000) and
+                percent_change_24h >= criteria.get("percent_change_24h_min", -5) and
+                (days_since_launch is not None and days_since_launch <= criteria.get("days_since_launch_max", 730)) and
+                circulating_supply >= criteria.get("circulating_supply_min", 1)
             ):
                 filtered_cryptos.append({
                     "name": crypto["name"],
@@ -73,10 +80,31 @@ def get_filtered_cryptos():
 
     return filtered_cryptos
 
+# Commande pour mettre à jour les critères
+async def update_criteria_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global FILTER_CRITERIA
+    try:
+        args = context.args
+        if len(args) % 2 != 0:
+            await update.message.reply_text("Veuillez fournir des paires clé-valeur pour mettre à jour les critères.")
+            return
+
+        for i in range(0, len(args), 2):
+            key = args[i]
+            value = float(args[i + 1])
+            if key in FILTER_CRITERIA:
+                FILTER_CRITERIA[key] = value
+
+        await update.message.reply_text(
+            f"Critères mis à jour : {FILTER_CRITERIA}"
+        )
+    except Exception as e:
+        await update.message.reply_text(f"Erreur lors de la mise à jour des critères : {e}")
+
 # Commande /cryptos
 async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    filtered_cryptos = get_filtered_cryptos()
+    filtered_cryptos = get_filtered_cryptos(FILTER_CRITERIA)
 
     if filtered_cryptos:
         message = "\ud83d\udcca *Cryptos Filtrées :*\n\n"
@@ -92,7 +120,7 @@ async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"\ud83d\udd12 *Offre en circulation* : {crypto['circulating_supply']:.0f} tokens\n\n"
             )
     else:
-        message = "\u274c Aucune crypto ne correspond à vos critères."
+        message = "\u274c Aucune crypto ne correspond à vos critères pour l'instant. Continuez à chercher des pépites !"
 
     await context.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
 
@@ -101,14 +129,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Bienvenue sur le bot Crypto !\n\n"
         "Utilisez /cryptos pour voir les cryptos filtrées.\n"
-        "Filtres appliqués :\n"
-        "- Market cap entre 0 et 100M$\n"
-        "- Volume quotidien supérieur à 500k$\n"
-        "- Variation 24h entre 5% et 30%\n"
-        "- Variation 7j entre 10% et 100%\n"
-        "- Ratio Volume/Market Cap > 10%\n"
-        "- Lancement récent (< 300 jours)\n"
-        "- Offre en circulation < 100M tokens"
+        "Utilisez /update_criteria suivi de paires clé-valeur pour modifier les critères de filtrage.\n"
+        "Exemple : /update_criteria market_cap_max 500000000 volume_24h_min 200000\n\n"
+        "Filtres par défaut :\n"
+        "- Market cap max : 1B$\n"
+        "- Volume quotidien min : 100k$\n"
+        "- Variation 24h min : -5%\n"
+        "- Jours depuis lancement max : 730\n"
+        "- Circulating supply min : 1"
     )
 
 # Commande /help
@@ -117,6 +145,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Voici les commandes disponibles :\n"
         "/start - Démarrer le bot\n"
         "/cryptos - Afficher les cryptos filtrées\n"
+        "/update_criteria - Mettre à jour les critères de filtrage\n"
         "/help - Obtenir de l'aide"
     )
 
@@ -128,6 +157,7 @@ def main():
     # Ajouter les commandes
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("cryptos", crypto_handler))
+    application.add_handler(CommandHandler("update_criteria", update_criteria_handler))
     application.add_handler(CommandHandler("help", help_command))
 
     # Lancer le bot en mode polling
