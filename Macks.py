@@ -79,7 +79,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     Handles the /start command.
     """
     user_first_name = update.effective_user.first_name
-    keyboard = [["Sarcastique", "Entrepreneur"], ["Motivant", "Réaliste", "Mystique"]]
+    keyboard = [["Sarcastique", "Entrepreneur"], ["Motivant", "Réaliste", "Mystique"], ["Menu"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
     welcome_message = (
         f"<b>Salut {user_first_name} !</b>\n\n"
@@ -88,6 +88,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"\n\n<b>Choisis une personnalité avec le clavier ci-dessous et laisse-moi te surprendre !</b>"
     )
     await update.message.reply_text(welcome_message, parse_mode="HTML", reply_markup=reply_markup)
+
+async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Displays the menu to the user.
+    """
+    keyboard = [["Sarcastique", "Entrepreneur"], ["Motivant", "Réaliste", "Mystique"], ["Menu"]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+    menu_message = (
+        "<b>Voici le menu :</b>\n"
+        + "\n".join([f"{desc[0]}" for desc in PERSONALITIES.values()]) +
+        "\n\n<b>Choisis une personnalité avec le clavier ci-dessous !</b>"
+    )
+    await update.message.reply_text(menu_message, parse_mode="HTML", reply_markup=reply_markup)
 
 async def set_personality(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -99,6 +112,8 @@ async def set_personality(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if selected_personality:
         user_personalities[update.effective_user.id] = selected_personality
         await update.message.reply_text(f"Personnalité définie sur : {selected_personality_display} ✅")
+    elif selected_personality_display == "Menu":
+        await show_menu(update, context)
     else:
         # If not a personality choice, handle as a regular message
         await handle_message(update, context)
