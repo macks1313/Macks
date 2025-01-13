@@ -14,31 +14,28 @@ CMC_URL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
 def get_filtered_cryptos():
     headers = {"X-CMC_PRO_API_KEY": COINMARKETCAP_API}
     params = {
-        "start": "1",  # Commence par la première crypto
-        "limit": "500",  # Analyse les 500 premières cryptos
-        "convert": "USD"  # Convertir les prix en USD
+        "start": "1",
+        "limit": "500",
+        "convert": "USD"
     }
 
     response = requests.get(CMC_URL, headers=headers, params=params)
     data = response.json()
 
-    # Liste des cryptos filtrées
     filtered_cryptos = []
 
     if response.status_code == 200 and "data" in data:
         for crypto in data["data"]:
-            # Extraire les données nécessaires
             market_cap = crypto["quote"]["USD"]["market_cap"]
             volume_24h = crypto["quote"]["USD"]["volume_24h"]
             percent_change_7d = crypto["quote"]["USD"]["percent_change_7d"]
             percent_change_30d = crypto["quote"]["USD"].get("percent_change_30d", 0)
 
-            # Appliquer les filtres
             if (
-                1e6 <= market_cap <= 1e8 and  # Capitalisation entre 1M$ et 100M$
-                volume_24h > 500_000 and  # Volume quotidien > 500k$
-                -10 <= percent_change_7d <= 10 and  # Variation modérée sur 7 jours
-                -20 <= percent_change_30d <= 20  # Variation modérée sur 30 jours
+                1e6 <= market_cap <= 1e8 and
+                volume_24h > 500_000 and
+                -10 <= percent_change_7d <= 10 and
+                -20 <= percent_change_30d <= 20
             ):
                 filtered_cryptos.append({
                     "name": crypto["name"],
@@ -52,14 +49,14 @@ def get_filtered_cryptos():
 
     return filtered_cryptos
 
-# Fonction pour gérer la commande /cryptos
+# Commande /cryptos
 async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     filtered_cryptos = get_filtered_cryptos()
 
     if filtered_cryptos:
         message = "📊 *Cryptos Filtrées :*\n\n"
-        for crypto in filtered_cryptos[:10]:  # Limite à 10 cryptos
+        for crypto in filtered_cryptos[:10]:
             message += (
                 f"🔸 *Nom* : {crypto['name']} ({crypto['symbol']})\n"
                 f"💰 *Prix* : ${crypto['price']:.2f}\n"
@@ -73,16 +70,16 @@ async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
 
-# Initialiser le bot Telegram
+# Initialisation du bot
 def main():
-    # Utilisation de `Application` au lieu de `Updater`
+    # Initialisation de l'application
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
     # Ajouter la commande /cryptos
     application.add_handler(CommandHandler("cryptos", crypto_handler))
 
-    # Démarrer le bot
-    application.run_polling()
+    # Utilisation du mode polling
+    application.run_polling(stop_signals=None)  # Désactiver les interruptions automatiques
 
 if __name__ == "__main__":
     main()
