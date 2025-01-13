@@ -62,6 +62,42 @@ async def get_crypto_data(symbol: str) -> str:
     else:
         return "❌ CoinMarketCap API key is not configured. Cannot fetch cryptocurrency data."
 
+async def get_small_cap_cryptos() -> str:
+    """Fetch all cryptocurrencies with market cap < 100M and > 150 transactions per minute."""
+    if COINMARKETCAP_API:
+        try:
+            url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
+            headers = {"X-CMC_PRO_API_KEY": COINMARKETCAP_API}
+            params = {"limit": 5000, "sort": "market_cap", "sort_dir": "asc"}
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, params=params) as response:
+                    if response.status != 200:
+                        logger.error(f"CoinMarketCap API request failed with status {response.status}, reason: {response.reason}")
+                        return f"❌ CoinMarketCap API request failed with status {response.status}: {response.reason}"
+                    
+                    data = await response.json()
+                    results = []
+
+                    for crypto in data.get("data", []):
+                        market_cap = crypto['quote']['USD'].get('market_cap', 0)
+                        transactions_per_minute = crypto['quote']['USD'].get('volume_24h', 0) / (24 * 60)
+
+                        if market_cap < 100_000_000 and transactions_per_minute > 150:
+                            results.append(f"📈 {crypto['name']} ({crypto['symbol']}) - Market Cap: ${market_cap:,.2f}")
+
+                    if not results:
+                        return "❌ No cryptocurrencies found matching the criteria."
+
+                    return "\n".join(results)
+        except aiohttp.ClientConnectorError as e:
+            logger.error(f"Connection error with CoinMarketCap: {str(e)}")
+            return "❌ Connection error occurred while fetching data from CoinMarketCap."
+        except Exception as e:
+            logger.error(f"Unexpected error with CoinMarketCap: {str(e)}")
+            return "❌ An unexpected error occurred while fetching data from CoinMarketCap."
+    else:
+        return "❌ CoinMarketCap API key is not configured. Cannot fetch cryptocurrency data."
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command"""
     logger.info("Received /start command")
@@ -69,6 +105,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🚀 Welcome to the Crypto Bot!\n\n"
         "Available commands:\n"
         "/crypto <symbol> - Get cryptocurrency data (e.g., /crypto BTC)\n"
+        "/smallcap - Get cryptocurrencies with market cap < 100M and > 150 transactions per minute\n"
         "/help - Show this help message"
     )
     await update.message.reply_text(welcome_message)
@@ -91,10 +128,18 @@ async def cmd_crypto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     message = await get_crypto_data(symbol)
     await update.message.reply_text(message)
 
+async def cmd_smallcap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /smallcap command"""
+    logger.info("Received /smallcap command")
+    await update.message.reply_text("🔍 Fetching small cap cryptocurrencies...")
+    message = await get_small_cap_cryptos()
+    await update.message.reply_text(message)
+
 # Register command handlers
 application.add_handler(CommandHandler("start", cmd_start))
 application.add_handler(CommandHandler("help", cmd_help))
 application.add_handler(CommandHandler("crypto", cmd_crypto))
+application.add_handler(CommandHandler("smallcap", cmd_smallcap))
 
 if __name__ == "__main__":
     try:
