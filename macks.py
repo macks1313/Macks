@@ -1,9 +1,9 @@
 import os
 import requests
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, ContextTypes
 
-# Récupérer les tokens depuis Heroku
+# Récupérer les tokens depuis les variables d'environnement
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 COINMARKETCAP_API = os.getenv("COINMARKETCAP_API")
 
@@ -53,7 +53,7 @@ def get_filtered_cryptos():
     return filtered_cryptos
 
 # Fonction pour gérer la commande /cryptos
-def crypto_handler(update: Update, context: CallbackContext):
+async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     filtered_cryptos = get_filtered_cryptos()
 
@@ -71,19 +71,19 @@ def crypto_handler(update: Update, context: CallbackContext):
     else:
         message = "❌ Aucune crypto ne correspond à vos critères."
 
-    context.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
+    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
 
 # Initialiser le bot Telegram
 def main():
-    updater = Updater(token=TELEGRAM_TOKEN)
-    dispatcher = updater.dispatcher
+    # Utilisation de `Application` au lieu de `Updater`
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    # Ajouter les commandes
-    dispatcher.add_handler(CommandHandler("cryptos", crypto_handler))
+    # Ajouter la commande /cryptos
+    application.add_handler(CommandHandler("cryptos", crypto_handler))
 
     # Démarrer le bot
-    updater.start_polling()
-    updater.idle()
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
+
