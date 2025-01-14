@@ -101,7 +101,6 @@ async def display_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
 
-
 # Fonction pour configurer un critère sélectionné
 async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -159,7 +158,7 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Réafficher les options de modification pour le critère
     await set_criteria(update, context)
 
-    # Envoyer un message en temps réel pour confirmer la modification
+    # Envoyer un message de confirmation en temps réel
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=f"✅ *Critère modifié* : {criteria_key.replace('_', ' ').title()}\n"
@@ -168,8 +167,6 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-    # Retour au menu de modification du critère
-    await set_criteria(update, context)
 
 # Fonction pour retourner à l'écran des critères
 async def back_to_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -272,18 +269,19 @@ def main():
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
     # Commandes principales
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("cryptos", crypto_handler))
-    application.add_handler(CommandHandler("set_criteria", display_criteria))
+    application.add_handler(CommandHandler("start", start))  # Message d'accueil
+    application.add_handler(CommandHandler("help", help_command))  # Menu d'aide
+    application.add_handler(CommandHandler("cryptos", crypto_handler))  # Liste des cryptos filtrées
+    application.add_handler(CommandHandler("set_criteria", display_criteria))  # Affiche les critères actuels
 
-    # Handlers pour les interactions avec les boutons
-    application.add_handler(CallbackQueryHandler(set_criteria, pattern="^config_"))
-    application.add_handler(CallbackQueryHandler(adjust_criteria, pattern="^(increase|decrease|half|double)_"))
-    application.add_handler(CallbackQueryHandler(back_to_criteria, pattern="^back_to_criteria"))
+    # Handlers pour les boutons interactifs
+    application.add_handler(CallbackQueryHandler(set_criteria, pattern="^config_"))  # Modifier un critère
+    application.add_handler(CallbackQueryHandler(adjust_criteria, pattern="^(increase|decrease|half|double)_"))  # Ajuster un critère
+    application.add_handler(CallbackQueryHandler(back_to_criteria, pattern="^back_to_criteria"))  # Retour au menu principal
 
-    # Lancer le bot
+    # Lancer le bot en mode polling
     application.run_polling()
+
 
 if __name__ == "__main__":
     main()
