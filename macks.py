@@ -133,7 +133,7 @@ async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
-
+    
 # Fonction pour ajuster un critère en fonction des boutons cliqués
 async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -158,14 +158,18 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Réafficher les options de modification pour le critère
     await set_criteria(update, context)
 
-    # Envoyer un message de confirmation en temps réel
+    # Envoyer un message de confirmation avec les détails du changement
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"✅ *Critère modifié* : {criteria_key.replace('_', ' ').title()}\n"
-             f"🔹 Ancienne valeur : {old_value}\n"
-             f"🔹 Nouvelle valeur : {new_value}",
+        text=f"✅ *Modification réussie !*\n"
+             f"🔹 *Critère* : {criteria_key.replace('_', ' ').title()}\n"
+             f"🔸 *Ancienne valeur* : {old_value:.2f}\n"
+             f"🔸 *Nouvelle valeur* : {new_value:.2f}",
         parse_mode="Markdown"
     )
+
+    # Retour au menu de modification du critère
+    await set_criteria(update, context)
 
 # Fonction pour retourner à l'écran des critères
 async def back_to_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
