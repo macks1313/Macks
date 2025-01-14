@@ -97,9 +97,10 @@ async def display_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🔹 Variation 24h Min : {FILTER_CRITERIA['percent_change_24h_min']}%\n"
         f"🔹 Jours Max : {FILTER_CRITERIA['days_since_launch_max']}\n"
         f"🔹 Supply Min : {FILTER_CRITERIA['circulating_supply_min']} tokens\n\n"
-        "Cliquez sur un critère pour le modifier :",
+        "Cliquez sur un critère pour le modifier.",
         reply_markup=reply_markup
     )
+
 
 # Fonction pour configurer un critère sélectionné
 async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -110,7 +111,7 @@ async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     selected_criteria = query.data.replace("config_", "")
     context.user_data["current_criteria"] = selected_criteria
 
-    # Ajouter des boutons pour ajuster les valeurs
+    # Boutons pour ajuster la valeur et revenir au menu principal
     buttons = [
         [
             InlineKeyboardButton("➖ -10%", callback_data=f"decrease_{selected_criteria}"),
@@ -125,33 +126,15 @@ async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = InlineKeyboardMarkup(buttons)
 
-    # Envoyer le message avec les boutons
+    # Envoyer un message avec les options de modification
     await query.edit_message_text(
         text=f"⚙️ *Modification du critère* : {selected_criteria.replace('_', ' ').title()}\n\n"
-             f"Valeur actuelle : {FILTER_CRITERIA[selected_criteria]}\n"
-             "Utilisez les boutons pour ajuster la valeur :",
+             f"Valeur actuelle : {FILTER_CRITERIA[selected_criteria]}\n\n"
+             "Utilisez les boutons ci-dessous pour ajuster la valeur ou revenez au menu principal.",
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
 
-    reply_markup = InlineKeyboardMarkup(buttons)
-
-    # Envoyer le message avec les boutons
-    await query.edit_message_text(
-        text=f"⚙️ *Modification du critère* : {selected_criteria.replace('_', ' ').title()}\n\n"
-             f"Valeur actuelle : {FILTER_CRITERIA[selected_criteria]}\n"
-             "Utilisez les boutons pour ajuster la valeur :",
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
-    )
-    reply_markup = InlineKeyboardMarkup(buttons)
-    await query.edit_message_text(
-        text=f"Modifier le critère : *{criteria_key.replace('_', ' ').title()}*\n\n"
-             f"Valeur actuelle : {FILTER_CRITERIA[criteria_key]}\n"
-             "Utilisez les boutons ci-dessous pour ajuster la valeur :",
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
-    )
 # Fonction pour ajuster un critère en fonction des boutons cliqués
 async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -173,20 +156,10 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     new_value = FILTER_CRITERIA[criteria_key]
 
-    # Réafficher les boutons pour le critère
+    # Réafficher les options de modification pour le critère
     await set_criteria(update, context)
 
-    # Optionnel : Envoyer une notification en temps réel
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=f"✅ *Critère modifié* : {criteria_key.replace('_', ' ').title()}\n"
-             f"🔹 Ancienne valeur : {old_value}\n"
-             f"🔹 Nouvelle valeur : {new_value}",
-        parse_mode="Markdown"
-    )
-
-
-    # Envoi d'une notification en temps réel
+    # Envoyer un message en temps réel pour confirmer la modification
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=f"✅ *Critère modifié* : {criteria_key.replace('_', ' ').title()}\n"
@@ -200,8 +173,11 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Fonction pour retourner à l'écran des critères
 async def back_to_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await display_criteria(update, context
-                          )
+    query = update.callback_query
+    await query.answer()
+
+    # Retour au menu principal des critères
+    await display_criteria(update, context)
 
 # Fonction pour enregistrer une nouvelle valeur pour le critère
 async def save_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -301,7 +277,7 @@ def main():
     application.add_handler(CommandHandler("cryptos", crypto_handler))
     application.add_handler(CommandHandler("set_criteria", display_criteria))
 
-    # Handlers pour les boutons
+    # Handlers pour les interactions avec les boutons
     application.add_handler(CallbackQueryHandler(set_criteria, pattern="^config_"))
     application.add_handler(CallbackQueryHandler(adjust_criteria, pattern="^(increase|decrease|half|double)_"))
     application.add_handler(CallbackQueryHandler(back_to_criteria, pattern="^back_to_criteria"))
