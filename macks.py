@@ -82,38 +82,65 @@ def get_filtered_cryptos(criteria):
 # Fonction pour afficher les critères actuels avec des boutons simplifiés
 async def display_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     buttons = [
-        [InlineKeyboardButton("Modifier Market Cap Max", callback_data="market_cap_max")],
-        [InlineKeyboardButton("Modifier Volume 24h Min", callback_data="volume_24h_min")],
-        [InlineKeyboardButton("Modifier Variation 24h Min", callback_data="percent_change_24h_min")],
-        [InlineKeyboardButton("Modifier Jours Max", callback_data="days_since_launch_max")],
-        [InlineKeyboardButton("Modifier Supply Min", callback_data="circulating_supply_min")],
+        [InlineKeyboardButton("Market Cap Max", callback_data="config_market_cap_max")],
+        [InlineKeyboardButton("Volume 24h Min", callback_data="config_volume_24h_min")],
+        [InlineKeyboardButton("Variation 24h Min", callback_data="config_percent_change_24h_min")],
+        [InlineKeyboardButton("Jours Max", callback_data="config_days_since_launch_max")],
+        [InlineKeyboardButton("Supply Min", callback_data="config_circulating_supply_min")],
     ]
 
     reply_markup = InlineKeyboardMarkup(buttons)
     await update.message.reply_text(
-        f"Voici les filtres actuels :\n"
+        f"Voici les critères actuels :\n"
         f"🔹 Market Cap Max : {FILTER_CRITERIA['market_cap_max']} $\n"
         f"🔹 Volume 24h Min : {FILTER_CRITERIA['volume_24h_min']} $\n"
         f"🔹 Variation 24h Min : {FILTER_CRITERIA['percent_change_24h_min']}%\n"
         f"🔹 Jours Max : {FILTER_CRITERIA['days_since_launch_max']}\n"
         f"🔹 Supply Min : {FILTER_CRITERIA['circulating_supply_min']} tokens\n\n"
-        "Cliquez sur un critère ci-dessous pour le modifier :",
+        "Cliquez sur un critère pour le modifier :",
         reply_markup=reply_markup
     )
 
-# Fonction pour demander une nouvelle valeur pour le critère sélectionné
+# Fonction pour configurer un critère sélectionné
 async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    selected_criteria = query.data  # Récupère le critère cliqué
-    context.user_data["current_criteria"] = selected_criteria
+    criteria_key = query.data.replace("config_", "")
+    context.user_data["current_criteria"] = criteria_key
 
-    # Envoie un message pour demander la nouvelle valeur
+    buttons = [
+        [InlineKeyboardButton("-10%", callback_data=f"decrease_{criteria_key}"),
+         InlineKeyboardButton("+10%", callback_data=f"increase_{criteria_key}")],
+        [InlineKeyboardButton("Retour", callback_data="back_to_criteria")]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(buttons)
     await query.edit_message_text(
-        text=f"Vous avez sélectionné *{selected_criteria.replace('_', ' ').title()}*.\n\n"
-             "Entrez une nouvelle valeur numérique :"
+        text=f"Modifier le critère : *{criteria_key.replace('_', ' ').title()}*\n\n"
+             f"Valeur actuelle : {FILTER_CRITERIA[criteria_key]}\n"
+             "Utilisez les boutons ci-dessous pour ajuster la valeur :",
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
     )
+# Fonction pour ajuster un critère en fonction des boutons cliqués
+async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    action, criteria_key = query.data.split("_", 1)
+
+    if action == "increase":
+        FILTER_CRITERIA[criteria_key] *= 1.1  # Augmente de 10%
+    elif action == "decrease":
+        FILTER_CRITERIA[criteria_key] *= 0.9  # Réduit de 10%
+
+    await set_criteria(update, context
+                      )  # Réaffiche le menu pour continuer
+# Fonction pour retourner à l'écran des critères
+async def back_to_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await display_criteria(update, context
+                          )
 
 # Fonction pour enregistrer une nouvelle valeur pour le critère
 async def save_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -198,11 +225,14 @@ def main():
 
     # Ajouter les commandes
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("cryptos", crypto_handler))
-    application.add_handler(CallbackQueryHandler(set_criteria))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("cryptos", crypto_handler))
     application.add_handler(CommandHandler("set_criteria", display_criteria))
-    application.add_handler(CommandHandler("save_criteria", save_criteria))
+
+    # Gérer les interactions avec les boutons
+    application.add_handler(CallbackQueryHandler(set_criteria, pattern="^config_"))
+    application.add_handler(CallbackQueryHandler(adjust_criteria, pattern="^(increase|decrease)_"))
+    application.add_handler(CallbackQueryHandler(back_to_criteria, pattern="^back_to_criteria"))
 
     # Lancer le bot en mode polling
     application.run_polling()
