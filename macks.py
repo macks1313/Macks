@@ -1,94 +1,188 @@
-# Partie A : Configuration initiale du bot et gestion des commandes de base (150 lignes)
+import os
+import requests
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-from telegram import Update, Bot
-from telegram.constants import ParseMode
-from telegram.ext import Updater, CommandHandler, CallbackContext
+# Configurer les logs
+import logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
-# Configuration initiale
-DEFAULT_FILTERS = {
-    "market_cap_max": 1000000000,  # 1 milliard
-    "volume_24h_min": 100000,     # 100k
-    "variation_24h_min": -5,      # -5%
-    "jours_depuis_lancement_max": 730,
-    "circulating_supply_min": 1,
+# Récupérer les tokens
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+COINMARKETCAP_API = os.getenv("COINMARKETCAP_API")
+
+# URL de l'API CoinMarketCap
+CMC_URL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
+
+# Définir des critères par défaut
+FILTER_CRITERIA = {
+    "market_cap_max": 1e9,
+    "volume_24h_min": 100_000,
+    "percent_change_24h_min": -5,
+    "days_since_launch_max": 730,
+    "circulating_supply_min": 1
 }
 
-current_filters = DEFAULT_FILTERS.copy()
+# Fonction pour filtrer les cryptos
+def get_filtered_cryptos(criteria):
+    headers = {"X-CMC_PRO_API_KEY": COINMARKETCAP_API}
+    params = {
+        "start": "1",
+        "limit": "500",
+        "convert": "USD"
+    }
 
-# Fonction pour démarrer le bot et afficher les filtres actuels
-def start(update: Update, context: CallbackContext):
-    message = (
-        "Bienvenue sur le bot Crypto !\n"
-        "Utilisez les commandes suivantes pour interagir avec le bot :\n"
-        "/cryptos - Afficher les cryptos filtrées\n"
-        "/filters - Voir les filtres actuels\n"
-        "/update_criteria <clé> <valeur> - Modifier un filtre spécifique\n"
-        "/reset_filters - Réinitialiser les filtres par défaut\n"
+    response = requests.get(CMC_URL, headers=headers, params=params)
+    if response.status_code != 200:
+        logger.error(f"Erreur API CoinMarketCap: {response.status_code}, {response.text}")
+        return []
+
+    data = response.json()
+    filtered_cryptos = []
+
+    if "data" in data:
+        for crypto in data["data"]:
+            market_cap = crypto["quote"]["USD"]["market_cap"]
+            volume_24h = crypto["quote"]["USD"]["volume_24h"]
+            percent_change_24h = crypto["quote"]["USD"]["percent_change_24h"]
+            percent_change_7d = crypto["quote"]["USD"]["percent_change_7d"]
+            volume_to_market_cap = (volume_24h / market_cap) * 100 if market_cap > 0 else 0
+            circulating_supply = crypto.get("circulating_supply", 0)
+            date_added = crypto.get("date_added", "")
+
+            # Calculer la durée depuis le lancement
+            from datetime import datetime
+            days_since_launch = (datetime.utcnow() - datetime.fromisoformat(date_added.replace("Z", ""))).days if date_added else None
+
+            if (
+                market_cap <= criteria.get("market_cap_max", 1e9) and
+                volume_24h >= criteria.get("volume_24h_min", 100_000) and
+                percent_change_24h >= criteria.get("percent_change_24h_min", -5) and
+                (days_since_launch is not None and days_since_launch <= criteria.get("days_since_launch_max", 730)) and
+                circulating_supply >= criteria.get("circulating_supply_min", 1)
+            ):
+                filtered_cryptos.append({
+                    "name": crypto["name"],
+                    "symbol": crypto["symbol"],
+                    "price": crypto["quote"]["USD"]["price"],
+                    "market_cap": market_cap,
+                    "volume_24h": volume_24h,
+                    "percent_change_24h": percent_change_24h,
+                    "percent_change_7d": percent_change_7d,
+                    "volume_to_market_cap": volume_to_market_cap,
+                    "circulating_supply": circulating_supply
+                })
+
+    return filtered_cryptos
+
+# Fonction pour afficher les critères actuels avec des boutons simplifiés
+async def display_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    buttons = [
+        InlineKeyboardButton("Market Cap Max", callback_data="market_cap_max"),
+        InlineKeyboardButton("Volume 24h Min", callback_data="volume_24h_min"),
+        InlineKeyboardButton("Variation 24h Min", callback_data="percent_change_24h_min"),
+        InlineKeyboardButton("Jours Max", callback_data="days_since_launch_max"),
+        InlineKeyboardButton("Supply Min", callback_data="circulating_supply_min"),
+    ]
+
+    reply_markup = InlineKeyboardMarkup.from_column(buttons)
+    await update.message.reply_text(
+        f"Voici les critères actuels :\n"
+        f"🔹 Market Cap Max : {FILTER_CRITERIA['market_cap_max']}\n"
+        f"🔹 Volume 24h Min : {FILTER_CRITERIA['volume_24h_min']}\n"
+        f"🔹 Variation 24h Min : {FILTER_CRITERIA['percent_change_24h_min']}%\n"
+        f"🔹 Jours Max : {FILTER_CRITERIA['days_since_launch_max']}\n"
+        f"🔹 Supply Min : {FILTER_CRITERIA['circulating_supply_min']}\n\n"
+        "Cliquez sur un critère pour le modifier.",
+        reply_markup=reply_markup
     )
-    update.message.reply_text(message)
+# Fonction pour demander une nouvelle valeur pour le critère sélectionné
+async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
-# Fonction pour afficher les filtres actuels
-def filters(update: Update, context: CallbackContext):
-    message = "Filtres actuels :\n"
-    for key, value in current_filters.items():
-        message += f"- {key.replace('_', ' ').capitalize()} : {value}\n"
-    update.message.reply_text(message)
+    selected_criteria = query.data
+    context.user_data["current_criteria"] = selected_criteria
 
-# Fonction pour mettre à jour les filtres
-def update_criteria(update: Update, context: CallbackContext):
-    args = context.args
-
-    if len(args) < 2:
-        update.message.reply_text(
-            "Erreur : Veuillez fournir une clé et une valeur. Exemple : /update_criteria market_cap_max 500000000"
-        )
-        return
-
-    key, value = args[0], args[1]
-
-    if key not in current_filters:
-        update.message.reply_text(f"Erreur : La clé '{key}' n'est pas valide.")
-        return
-
+    await query.edit_message_text(
+        text=f"Entrez une nouvelle valeur pour {selected_criteria.replace('_', ' ').title()} :"
+    )
+# Fonction pour enregistrer une nouvelle valeur pour le critère
+async def save_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        # Convertir la valeur en entier ou float selon le besoin
-        if isinstance(current_filters[key], int):
-            value = int(value)
-        elif isinstance(current_filters[key], float):
-            value = float(value)
+        new_value = float(update.message.text)
+        current_criteria = context.user_data.get("current_criteria")
+
+        if current_criteria and current_criteria in FILTER_CRITERIA:
+            FILTER_CRITERIA[current_criteria] = new_value
+            await update.message.reply_text(
+                f"✅ Le critère '{current_criteria.replace('_', ' ').title()}' a été mis à jour avec succès : {new_value}"
+            )
+        else:
+            await update.message.reply_text("❌ Aucun critère valide en cours de modification.")
     except ValueError:
-        update.message.reply_text("Erreur : La valeur doit être un nombre valide.")
-        return
+        await update.message.reply_text("❌ Veuillez entrer une valeur numérique valide.")
 
-    # Mettre à jour le filtre
-    current_filters[key] = value
-    update.message.reply_text(f"Le filtre '{key}' a été mis à jour à : {value}")
+# Commande /cryptos
+async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    filtered_cryptos = get_filtered_cryptos(FILTER_CRITERIA)
 
-# Fonction pour réinitialiser les filtres par défaut
-def reset_filters(update: Update, context: CallbackContext):
-    global current_filters
-    current_filters = DEFAULT_FILTERS.copy()
-    update.message.reply_text("Les filtres ont été réinitialisés aux valeurs par défaut.")
+    if filtered_cryptos:
+        message = "📊 *Cryptos Filtrées :*\n\n"
+        for crypto in filtered_cryptos[:10]:
+            message += (
+                f"🔸 *Nom* : {crypto['name']} ({crypto['symbol']})\n"
+                f"💰 *Prix* : ${crypto['price']:.2f}\n"
+                f"📈 *Market Cap* : ${crypto['market_cap']:.0f}\n"
+                f"📊 *Volume (24h)* : ${crypto['volume_24h']:.0f}\n"
+                f"📉 *Variation 24h* : {crypto['percent_change_24h']:.2f}%\n"
+                f"📉 *Variation 7j* : {crypto['percent_change_7d']:.2f}%\n"
+                f"📊 *Ratio Volume/Market Cap* : {crypto['volume_to_market_cap']:.2f}%\n"
+                f"🔒 *Offre en circulation* : {crypto['circulating_supply']:.0f} tokens\n\n"
+            )
+    else:
+        message = "❌ Aucune crypto ne correspond à vos critères pour l'instant. Continuez à chercher des pépites !"
 
-# Fonction simulée pour afficher les cryptos filtrées (sera implémentée en Partie B)
-def cryptos(update: Update, context: CallbackContext):
-    update.message.reply_text("Affichage des cryptos filtrées... (à implémenter en Partie B)")
+    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
 
-# Configuration du bot et des commandes
+# Commande /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Bienvenue sur le bot Crypto !\n\n"
+        "Utilisez /cryptos pour voir les cryptos filtrées.\n"
+        "Utilisez /set_criteria pour ajuster vos critères de filtrage facilement."
+    )
+
+# Commande /help
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Voici les commandes disponibles :\n"
+        "/start - Démarrer le bot\n"
+        "/cryptos - Afficher les cryptos filtrées\n"
+        "/set_criteria - Ajuster les critères de filtrage\n"
+        "/help - Obtenir de l'aide"
+    )
+
+# Initialisation du bot
 def main():
-    updater = Updater("YOUR_BOT_TOKEN_HERE", use_context=True)
-    dp = updater.dispatcher
+    logger.info("Démarrage du bot...")
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    # Ajout des handlers de commandes
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("filters", filters))
-    dp.add_handler(CommandHandler("update_criteria", update_criteria))
-    dp.add_handler(CommandHandler("reset_filters", reset_filters))
-    dp.add_handler(CommandHandler("cryptos", cryptos))
+    # Ajouter les commandes
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("cryptos", crypto_handler))
+    application.add_handler(CallbackQueryHandler(set_criteria))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("set_criteria", display_criteria))
+    application.add_handler(CommandHandler("save_criteria", save_criteria))
 
-    # Lancer le bot
-    updater.start_polling()
-    updater.idle()
+    # Lancer le bot en mode polling
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
