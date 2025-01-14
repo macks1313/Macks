@@ -181,9 +181,9 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Fonction pour retourner à l'écran des critères
 async def back_to_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    await query.answer()  # Répond à la requête pour éviter les erreurs
 
-    # Retour au menu principal des critères
+    # Appel du menu principal des critères
     await display_criteria(update, context)
 
 # Fonction pour enregistrer une nouvelle valeur pour le critère
