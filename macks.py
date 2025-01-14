@@ -106,17 +106,29 @@ async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
+    # Récupérer le critère sélectionné
     selected_criteria = query.data.replace("config_", "")
     context.user_data["current_criteria"] = selected_criteria
 
-    # Notification sur le critère en cours de modification
+    # Ajouter des boutons pour ajuster les valeurs
+    buttons = [
+        [
+            InlineKeyboardButton("➖ -10%", callback_data=f"decrease_{selected_criteria}"),
+            InlineKeyboardButton("➕ +10%", callback_data=f"increase_{selected_criteria}")
+        ],
+        [InlineKeyboardButton("🔙 Retour", callback_data="back_to_criteria")]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(buttons)
+
+    # Envoyer le message avec les boutons
     await query.edit_message_text(
         text=f"⚙️ *Modification du critère* : {selected_criteria.replace('_', ' ').title()}\n\n"
              f"Valeur actuelle : {FILTER_CRITERIA[selected_criteria]}\n"
-             "➡️ Entrez une nouvelle valeur numérique ou utilisez les boutons pour ajuster.",
+             "Utilisez les boutons pour ajuster la valeur :",
+        reply_markup=reply_markup,
         parse_mode="Markdown"
     )
-
     reply_markup = InlineKeyboardMarkup(buttons)
     await query.edit_message_text(
         text=f"Modifier le critère : *{criteria_key.replace('_', ' ').title()}*\n\n"
