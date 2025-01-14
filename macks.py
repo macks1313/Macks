@@ -116,8 +116,23 @@ async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("➖ -10%", callback_data=f"decrease_{selected_criteria}"),
             InlineKeyboardButton("➕ +10%", callback_data=f"increase_{selected_criteria}")
         ],
+        [
+            InlineKeyboardButton("½ Half", callback_data=f"half_{selected_criteria}"),
+            InlineKeyboardButton("x2 Double", callback_data=f"double_{selected_criteria}")
+        ],
         [InlineKeyboardButton("🔙 Retour", callback_data="back_to_criteria")]
     ]
+
+    reply_markup = InlineKeyboardMarkup(buttons)
+
+    # Envoyer le message avec les boutons
+    await query.edit_message_text(
+        text=f"⚙️ *Modification du critère* : {selected_criteria.replace('_', ' ').title()}\n\n"
+             f"Valeur actuelle : {FILTER_CRITERIA[selected_criteria]}\n"
+             "Utilisez les boutons pour ajuster la valeur :",
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
+    )
 
     reply_markup = InlineKeyboardMarkup(buttons)
 
@@ -142,16 +157,34 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
+    # Extraire l'action (increase, decrease, half, double) et le critère
     action, criteria_key = query.data.split("_", 1)
 
-    # Ajustement de la valeur
+    # Ajuster la valeur
     old_value = FILTER_CRITERIA[criteria_key]
     if action == "increase":
         FILTER_CRITERIA[criteria_key] *= 1.1  # Augmente de 10%
     elif action == "decrease":
         FILTER_CRITERIA[criteria_key] *= 0.9  # Réduit de 10%
+    elif action == "half":
+        FILTER_CRITERIA[criteria_key] /= 2  # Divise par 2
+    elif action == "double":
+        FILTER_CRITERIA[criteria_key] *= 2  # Multiplie par 2
 
     new_value = FILTER_CRITERIA[criteria_key]
+
+    # Réafficher les boutons pour le critère
+    await set_criteria(update, context)
+
+    # Optionnel : Envoyer une notification en temps réel
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"✅ *Critère modifié* : {criteria_key.replace('_', ' ').title()}\n"
+             f"🔹 Ancienne valeur : {old_value}\n"
+             f"🔹 Nouvelle valeur : {new_value}",
+        parse_mode="Markdown"
+    )
+
 
     # Envoi d'une notification en temps réel
     await context.bot.send_message(
@@ -260,21 +293,20 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Initialisation du bot
 def main():
-    logger.info("Démarrage du bot...")
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    # Ajouter les commandes
+    # Commandes principales
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("cryptos", crypto_handler))
     application.add_handler(CommandHandler("set_criteria", display_criteria))
 
-    # Gérer les interactions avec les boutons
+    # Handlers pour les boutons
     application.add_handler(CallbackQueryHandler(set_criteria, pattern="^config_"))
-    application.add_handler(CallbackQueryHandler(adjust_criteria, pattern="^(increase|decrease)_"))
+    application.add_handler(CallbackQueryHandler(adjust_criteria, pattern="^(increase|decrease|half|double)_"))
     application.add_handler(CallbackQueryHandler(back_to_criteria, pattern="^back_to_criteria"))
 
-    # Lancer le bot en mode polling
+    # Lancer le bot
     application.run_polling()
 
 if __name__ == "__main__":
