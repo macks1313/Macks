@@ -81,13 +81,9 @@ def get_filtered_cryptos(criteria):
 
 # Fonction pour afficher les critères actuels avec des boutons simplifiés
 async def display_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    buttons = [
-        [InlineKeyboardButton("Market Cap Max", callback_data="config_market_cap_max")],
-        [InlineKeyboardButton("Volume 24h Min", callback_data="config_volume_24h_min")],
-        [InlineKeyboardButton("Variation 24h Min", callback_data="config_percent_change_24h_min")],
-        [InlineKeyboardButton("Jours Max", callback_data="config_days_since_launch_max")],
-        [InlineKeyboardButton("Supply Min", callback_data="config_circulating_supply_min")],
-    ]
+    buttons = []
+    for criterion in FILTER_CRITERIA.keys():
+        buttons.append([InlineKeyboardButton(criterion.replace("_", " ").title(), callback_data=f"config_{criterion}")])
 
     reply_markup = InlineKeyboardMarkup(buttons)
     await update.message.reply_text(
@@ -109,6 +105,11 @@ async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Récupérer le critère sélectionné
     selected_criteria = query.data.replace("config_", "")
     context.user_data["current_criteria"] = selected_criteria
+
+    # Vérifiez que le critère existe dans FILTER_CRITERIA
+    if selected_criteria not in FILTER_CRITERIA:
+        await query.edit_message_text("❌ Critère invalide sélectionné.")
+        return
 
     # Boutons pour ajuster la valeur et revenir au menu principal
     buttons = [
@@ -139,8 +140,17 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    # Extraire l'action (increase, decrease, half, double) et le critère
+    # Extraire l'action et le critère
     action, criteria_key = query.data.split("_", 1)
+
+    # Vérifiez que le critère existe dans FILTER_CRITERIA
+    if criteria_key not in FILTER_CRITERIA:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"❌ Critère invalide : {criteria_key}",
+            parse_mode="Markdown"
+        )
+        return
 
     # Ajuster la valeur
     old_value = FILTER_CRITERIA[criteria_key]
@@ -158,7 +168,7 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Réafficher les options de modification pour le critère
     await set_criteria(update, context)
 
-    # Envoyer un message de confirmation avec les détails du changement
+    # Envoyer un message de confirmation
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=f"✅ *Modification réussie !*\n"
@@ -167,9 +177,6 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
              f"🔸 *Nouvelle valeur* : {new_value:.2f}",
         parse_mode="Markdown"
     )
-
-    # Retour au menu de modification du critère
-    await set_criteria(update, context)
 
 # Fonction pour retourner à l'écran des critères
 async def back_to_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
