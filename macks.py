@@ -272,15 +272,15 @@ def main():
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
     # Commandes principales
-    application.add_handler(CommandHandler("start", start))  # Message d'accueil
-    application.add_handler(CommandHandler("help", help_command))  # Menu d'aide
-    application.add_handler(CommandHandler("cryptos", crypto_handler))  # Liste des cryptos filtrées
-    application.add_handler(CommandHandler("set_criteria", display_criteria))  # Affiche les critères actuels
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("cryptos", crypto_handler))
+    application.add_handler(CommandHandler("set_criteria", display_criteria))
 
     # Handlers pour les interactions avec les boutons
-    application.add_handler(CallbackQueryHandler(set_criteria, pattern="^config_"))  # Modifier un critère
-    application.add_handler(CallbackQueryHandler(adjust_criteria, pattern="^(increase|decrease|half|double)_"))  # Ajuster un critère
-    application.add_handler(CallbackQueryHandler(back_to_criteria, pattern="^back_to_criteria"))  # Retour au menu principal
+    application.add_handler(CallbackQueryHandler(set_criteria, pattern="^config_"))
+    application.add_handler(CallbackQueryHandler(adjust_criteria, pattern="^(increase|decrease|half|double)_"))
+    application.add_handler(CallbackQueryHandler(back_to_criteria, pattern="^back_to_criteria"))
 
     # Lancer le bot en mode polling
     application.run_polling()
