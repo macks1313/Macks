@@ -167,7 +167,6 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-
 # Fonction pour retourner à l'écran des critères
 async def back_to_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -274,14 +273,13 @@ def main():
     application.add_handler(CommandHandler("cryptos", crypto_handler))  # Liste des cryptos filtrées
     application.add_handler(CommandHandler("set_criteria", display_criteria))  # Affiche les critères actuels
 
-    # Handlers pour les boutons interactifs
+    # Handlers pour les interactions avec les boutons
     application.add_handler(CallbackQueryHandler(set_criteria, pattern="^config_"))  # Modifier un critère
     application.add_handler(CallbackQueryHandler(adjust_criteria, pattern="^(increase|decrease|half|double)_"))  # Ajuster un critère
     application.add_handler(CallbackQueryHandler(back_to_criteria, pattern="^back_to_criteria"))  # Retour au menu principal
 
     # Lancer le bot en mode polling
     application.run_polling()
-
 
 if __name__ == "__main__":
     main()
