@@ -154,18 +154,33 @@ async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Bienvenue sur le bot Crypto !\n\n"
-        "Utilisez /cryptos pour voir les cryptos filtrées.\n"
-        "Utilisez /set_criteria pour ajuster vos critères de filtrage facilement."
+        "Voici les filtres par défaut appliqués :\n"
+        f"🔹 Market Cap Max : {FILTER_CRITERIA['market_cap_max']} $\n"
+        f"🔹 Volume 24h Min : {FILTER_CRITERIA['volume_24h_min']} $\n"
+        f"🔹 Variation 24h Min : {FILTER_CRITERIA['percent_change_24h_min']}%\n"
+        f"🔹 Jours Max : {FILTER_CRITERIA['days_since_launch_max']}\n"
+        f"🔹 Supply Min : {FILTER_CRITERIA['circulating_supply_min']} tokens\n\n"
+        "👉 Utilisez /cryptos pour afficher les cryptos correspondant à ces critères.\n"
+        "👉 Utilisez /set_criteria pour modifier vos filtres facilement."
     )
 
 # Commande /help
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Voici les commandes disponibles :\n"
-        "/start - Démarrer le bot\n"
-        "/cryptos - Afficher les cryptos filtrées\n"
-        "/set_criteria - Ajuster les critères de filtrage\n"
-        "/help - Obtenir de l'aide"
+        "📖 *Guide d'utilisation du bot Crypto* 📖\n\n"
+        "1️⃣ *Afficher les cryptos filtrées* :\n"
+        "   Utilisez /cryptos pour voir les cryptos correspondant à vos critères.\n\n"
+        "2️⃣ *Modifier les critères de filtrage* :\n"
+        "   - Utilisez /set_criteria pour afficher les filtres actuels.\n"
+        "   - Cliquez sur un critère pour le modifier.\n"
+        "   - Entrez une nouvelle valeur pour mettre à jour le filtre.\n\n"
+        "3️⃣ *Filtres par défaut* :\n"
+        f"   🔹 Market Cap Max : {FILTER_CRITERIA['market_cap_max']} $\n"
+        f"   🔹 Volume 24h Min : {FILTER_CRITERIA['volume_24h_min']} $\n"
+        f"   🔹 Variation 24h Min : {FILTER_CRITERIA['percent_change_24h_min']}%\n"
+        f"   🔹 Jours Max : {FILTER_CRITERIA['days_since_launch_max']}\n"
+        f"   🔹 Supply Min : {FILTER_CRITERIA['circulating_supply_min']} tokens\n\n"
+        "ℹ️ Pour toute question ou problème, contactez l'administrateur."
     )
 
 # Initialisation du bot
