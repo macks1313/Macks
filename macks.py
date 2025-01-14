@@ -106,14 +106,16 @@ async def set_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    criteria_key = query.data.replace("config_", "")
-    context.user_data["current_criteria"] = criteria_key
+    selected_criteria = query.data.replace("config_", "")
+    context.user_data["current_criteria"] = selected_criteria
 
-    buttons = [
-        [InlineKeyboardButton("-10%", callback_data=f"decrease_{criteria_key}"),
-         InlineKeyboardButton("+10%", callback_data=f"increase_{criteria_key}")],
-        [InlineKeyboardButton("Retour", callback_data="back_to_criteria")]
-    ]
+    # Notification sur le critère en cours de modification
+    await query.edit_message_text(
+        text=f"⚙️ *Modification du critère* : {selected_criteria.replace('_', ' ').title()}\n\n"
+             f"Valeur actuelle : {FILTER_CRITERIA[selected_criteria]}\n"
+             "➡️ Entrez une nouvelle valeur numérique ou utilisez les boutons pour ajuster.",
+        parse_mode="Markdown"
+    )
 
     reply_markup = InlineKeyboardMarkup(buttons)
     await query.edit_message_text(
@@ -130,13 +132,27 @@ async def adjust_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     action, criteria_key = query.data.split("_", 1)
 
+    # Ajustement de la valeur
+    old_value = FILTER_CRITERIA[criteria_key]
     if action == "increase":
         FILTER_CRITERIA[criteria_key] *= 1.1  # Augmente de 10%
     elif action == "decrease":
         FILTER_CRITERIA[criteria_key] *= 0.9  # Réduit de 10%
 
-    await set_criteria(update, context
-                      )  # Réaffiche le menu pour continuer
+    new_value = FILTER_CRITERIA[criteria_key]
+
+    # Envoi d'une notification en temps réel
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"✅ *Critère modifié* : {criteria_key.replace('_', ' ').title()}\n"
+             f"🔹 Ancienne valeur : {old_value}\n"
+             f"🔹 Nouvelle valeur : {new_value}",
+        parse_mode="Markdown"
+    )
+
+    # Retour au menu de modification du critère
+    await set_criteria(update, context)
+
 # Fonction pour retourner à l'écran des critères
 async def back_to_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await display_criteria(update, context
@@ -149,9 +165,14 @@ async def save_criteria(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current_criteria = context.user_data.get("current_criteria")
 
         if current_criteria and current_criteria in FILTER_CRITERIA:
+            old_value = FILTER_CRITERIA[current_criteria]
             FILTER_CRITERIA[current_criteria] = new_value
+
+            # Envoi d'une notification en temps réel
             await update.message.reply_text(
-                f"✅ Le critère *{current_criteria.replace('_', ' ').title()}* a été mis à jour avec succès : {new_value}."
+                f"✅ *Critère mis à jour* : {current_criteria.replace('_', ' ').title()}\n"
+                f"🔹 Ancienne valeur : {old_value}\n"
+                f"🔹 Nouvelle valeur : {new_value}"
             )
         else:
             await update.message.reply_text("❌ Aucun critère valide en cours de modification.")
@@ -184,15 +205,20 @@ async def crypto_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Commande /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Bienvenue sur le bot Crypto !\n\n"
-        "Voici les filtres par défaut appliqués :\n"
-        f"🔹 Market Cap Max : {FILTER_CRITERIA['market_cap_max']} $\n"
-        f"🔹 Volume 24h Min : {FILTER_CRITERIA['volume_24h_min']} $\n"
-        f"🔹 Variation 24h Min : {FILTER_CRITERIA['percent_change_24h_min']}%\n"
-        f"🔹 Jours Max : {FILTER_CRITERIA['days_since_launch_max']}\n"
-        f"🔹 Supply Min : {FILTER_CRITERIA['circulating_supply_min']} tokens\n\n"
-        "👉 Utilisez /cryptos pour afficher les cryptos correspondant à ces critères.\n"
-        "👉 Utilisez /set_criteria pour modifier vos filtres facilement."
+        "🎉 *Bienvenue sur le bot Crypto !* 🎉\n\n"
+        "Voici les commandes disponibles :\n"
+        "🔹 `/cryptos` : Affiche les cryptos correspondant aux filtres actuels.\n"
+        "🔹 `/set_criteria` : Configurez ou modifiez les critères de sélection.\n"
+        "🔹 `/help` : Obtenez des explications détaillées sur le fonctionnement du bot.\n\n"
+        "🔍 *Filtres actuellement appliqués* :\n"
+        f"   - Market Cap Max : {FILTER_CRITERIA['market_cap_max']} $\n"
+        f"   - Volume 24h Min : {FILTER_CRITERIA['volume_24h_min']} $\n"
+        f"   - Variation 24h Min : {FILTER_CRITERIA['percent_change_24h_min']}%\n"
+        f"   - Jours Max : {FILTER_CRITERIA['days_since_launch_max']}\n"
+        f"   - Supply Min : {FILTER_CRITERIA['circulating_supply_min']} tokens\n\n"
+        "👉 *Commencez dès maintenant* :\n"
+        "   - Utilisez `/cryptos` pour explorer les cryptos filtrées.\n"
+        "   - Utilisez `/set_criteria` pour ajuster les filtres selon vos besoins."
     )
 
 # Commande /help
@@ -200,22 +226,24 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📖 *Guide d'utilisation du bot Crypto* 📖\n\n"
         "1️⃣ *Afficher les cryptos filtrées* :\n"
-        "   - Utilisez la commande `/cryptos` pour afficher les cryptos correspondant aux critères actuels.\n\n"
-        "2️⃣ *Voir ou modifier les critères de filtrage* :\n"
-        "   - Utilisez `/set_criteria` pour voir les critères actuels et cliquer sur celui que vous voulez modifier.\n"
-        "   - Entrez une nouvelle valeur numérique lorsque le bot vous le demande.\n\n"
-        "3️⃣ *Filtres par défaut appliqués* :\n"
-        "   - 🔹 Market Cap Max : Limite supérieure de la capitalisation boursière (ex. : 1 milliard $).\n"
-        "   - 🔹 Volume 24h Min : Volume minimum échangé en 24h (ex. : 100 000 $).\n"
-        "   - 🔹 Variation 24h Min : Baisse minimale tolérée en pourcentage (ex. : -5%).\n"
-        "   - 🔹 Jours Max : Nombre maximum de jours depuis le lancement (ex. : 730 jours).\n"
-        "   - 🔹 Supply Min : Quantité minimale de tokens en circulation (ex. : 1).\n\n"
-        "📌 *Commandes disponibles* :\n"
-        "   - `/start` : Voir le message d'accueil et les commandes.\n"
-        "   - `/cryptos` : Afficher les cryptos filtrées.\n"
-        "   - `/set_criteria` : Modifier les critères de filtrage.\n"
-        "   - `/help` : Obtenir ce menu d'aide.\n\n"
-        "ℹ️ Pour toute question, contactez l'administrateur."
+        "   - Utilisez `/cryptos` pour afficher les cryptos correspondant aux critères actuels.\n\n"
+        "2️⃣ *Configurer ou modifier les critères* :\n"
+        "   - Utilisez `/set_criteria` pour afficher les critères actuels.\n"
+        "   - Cliquez sur un critère pour le modifier.\n"
+        "   - Ajustez les valeurs avec les boutons +10% ou -10%.\n"
+        "   - Revenez au menu principal avec le bouton \"Retour\".\n\n"
+        "3️⃣ *Filtres disponibles* :\n"
+        "   - 🔹 *Market Cap Max* : Limite supérieure de la capitalisation boursière (ex. : 1 milliard $).\n"
+        "   - 🔹 *Volume 24h Min* : Volume minimum échangé en 24h (ex. : 100 000 $).\n"
+        "   - 🔹 *Variation 24h Min* : Baisse minimale tolérée en pourcentage (ex. : -5%).\n"
+        "   - 🔹 *Jours Max* : Nombre maximum de jours depuis le lancement (ex. : 730 jours).\n"
+        "   - 🔹 *Supply Min* : Quantité minimale de tokens en circulation (ex. : 1).\n\n"
+        "4️⃣ *Commandes disponibles* :\n"
+        "   - `/start` : Affiche toutes les commandes et les critères actuels.\n"
+        "   - `/cryptos` : Montre les cryptos correspondant aux critères sélectionnés.\n"
+        "   - `/set_criteria` : Permet de modifier facilement les filtres.\n"
+        "   - `/help` : Fournit ce menu d'aide détaillé.\n\n"
+        "ℹ️ *Astuce* : Ajustez vos critères régulièrement pour découvrir de nouvelles opportunités de cryptos !"
     )
 
 # Initialisation du bot
